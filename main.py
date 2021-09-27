@@ -31,7 +31,7 @@ scaler = MinMaxScaler(feature_range=(0,10))
 scaled_df = pd.DataFrame(df, columns=['form','total_points','value'])
 df_scaled = pd.DataFrame(scaler.fit_transform(scaled_df), columns=['form','total_points','value'])
 
-df['overall'] = round((df_scaled['form'] + 2 * df_scaled['total_points'] + df_scaled['value'])/4,2)
+df['overall'] = round((df_scaled['form'] + df_scaled['total_points'] + 2 * df_scaled['value'])/4,2)
 df = df.loc[df['value'] > 0]
 
 gkp_df = df.loc[df['position'] == 'GKP'].sort_values('overall', ascending=False)
