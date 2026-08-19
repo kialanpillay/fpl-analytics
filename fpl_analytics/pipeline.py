@@ -1,0 +1,150 @@
+"""End-to-end load → feature → score → evaluate pipeline."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+
+from fpl_analytics.api import FPLClient
+from fpl_analytics.catalog import fixtures_frame, players_frame, season_meta, teams_frame
+from fpl_analytics.features import enrich
+from fpl_analytics.models import score
+from fpl_analytics.optimiser import (
+    SquadPlan,
+    one_for_one,
+    optimise_squad,
+    suggest_transfers,
+)
+from fpl_analytics.research import STRATEGIES, note_for
+from fpl_analytics.squad import (
+    DEFAULT_SQUAD_PATH,
+    ManagerSquad,
+    evaluate_squad,
+    load_squad,
+    resolve_squad,
+)
+
+
+@dataclass
+class AnalysisBundle:
+    fetched_at: str
+    meta: Any
+    players: pd.DataFrame
+    squad: pd.DataFrame
+    squad_eval: dict[str, Any]
+    spec: ManagerSquad
+    plans: dict[str, SquadPlan] = field(default_factory=dict)
+    transfers: pd.DataFrame = field(default_factory=pd.DataFrame)
+    transfer_plan: SquadPlan | None = None
+    horizon: int = 6
+
+    def available(self) -> pd.DataFrame:
+        return self.players.loc[
+            self.players["can_select"] & (self.players["status"].isin(["a", "d"]))
+        ]
+
+    def leaders(self, sort: str, n: int = 12, position: str | None = None) -> pd.DataFrame:
+        frame = self.available()
+        if position:
+            frame = frame.loc[frame["position"] == position]
+        return frame.sort_values(sort, ascending=False).head(n)
+
+    def unorthodox(self, n: int = 15) -> pd.DataFrame:
+        pool = self.available()
+        return pool.loc[pool["unorthodox"]].sort_values("differential", ascending=False).head(n)
+
+    def underpriced(self, n: int = 15) -> pd.DataFrame:
+        return (
+            self.available()
+            .loc[self.available()["effective_minutes"] >= 0.40]
+            .sort_values("residual", ascending=False)
+            .head(n)
+        )
+
+
+def run_pipeline(
+    squad_path: Path | str = DEFAULT_SQUAD_PATH,
+    horizon: int = 6,
+    force_refresh: bool = False,
+    objectives: tuple[str, ...] = ("balanced", "ppp", "consistency", "differential"),
+    max_transfers: int = 2,
+) -> AnalysisBundle:
+    client = FPLClient()
+    bootstrap = client.bootstrap(force=force_refresh)
+    fixtures_raw = client.fixtures(force=force_refresh)
+    meta = season_meta(bootstrap)
+    teams = teams_frame(bootstrap)
+    fixtures = fixtures_frame(fixtures_raw)
+    players = score(
+        enrich(
+            players_frame(bootstrap, teams),
+            fixtures,
+            teams,
+            next_event=meta.next_event,
+            season_started=meta.season_started,
+            horizon=horizon,
+        )
+    )
+
+    spec = load_squad(squad_path)
+    squad = resolve_squad(spec, players)
+    ev = evaluate_squad(squad, team_limit=meta.team_limit)
+
+    plans: dict[str, SquadPlan] = {}
+    for obj in objectives:
+        try:
+            plans[obj] = optimise_squad(
+                players, objective=obj, budget=spec.budget, team_limit=meta.team_limit
+            )
+        except Exception as exc:  # keep the rest of the report usable
+            plans[obj] = exc  # type: ignore[assignment]
+
+    transfers = one_for_one(squad, players, bank=spec.bank, team_limit=meta.team_limit)
+    try:
+        transfer_plan = suggest_transfers(
+            squad,
+            players,
+            max_transfers=max_transfers,
+            objective="balanced",
+            budget=spec.budget,
+            bank=spec.bank,
+            team_limit=meta.team_limit,
+        )
+    except Exception:
+        transfer_plan = None
+
+    return AnalysisBundle(
+        fetched_at=datetime.now(timezone.utc).isoformat(),
+        meta=meta,
+        players=players,
+        squad=squad,
+        squad_eval=ev,
+        spec=spec,
+        plans={k: v for k, v in plans.items() if not isinstance(v, Exception)},
+        transfers=transfers,
+        transfer_plan=transfer_plan,
+        horizon=horizon,
+    )
+
+
+def player_notes(squad: pd.DataFrame) -> list[dict[str, str]]:
+    rows = []
+    for rec in squad.itertuples(index=False):
+        note = note_for(rec.web_name)
+        if note:
+            rows.append(
+                {
+                    "name": rec.web_name,
+                    "tone": note.tone,
+                    "note": note.note,
+                }
+            )
+    return rows
+
+
+def strategies() -> list[dict[str, str]]:
+    return STRATEGIES

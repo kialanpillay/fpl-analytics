@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+data/cache/
+data/exports/
+.DS_Store
+*.canvas.data.json

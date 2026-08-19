@@ -1,0 +1,23 @@
+# FPL element id is the identity. name is a label (web_name, not the legal name).
+# After a transfer, change the id — if the label no longer matches, analyse warns.
+
+budget: 100.0
+bank: 0.0
+free_transfers: 1
+
+players:
+  - {id: 1, name: Raya}
+  - {id: 109, name: Verbruggen}
+  - {id: 204, name: Mitchell}
+  - {id: 8, name: Calafiori}
+  - {id: 229, name: Tarkowski}
+  - {id: 388, name: Guehi}
+  - {id: 112, name: Van Hecke}
+  - {id: 397, name: Semenyo}
+  - {id: 13, name: Rice}
+  - {id: 237, name: Ndiaye}
+  - {id: 542, name: E.Le Fée}
+  - {id: 338, name: Ampadu}
+  - {id: 411, name: Haaland}
+  - {id: 346, name: Calvert-Lewin}
+  - {id: 165, name: Joao Pedro}
