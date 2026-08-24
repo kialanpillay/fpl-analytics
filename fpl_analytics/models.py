@@ -9,6 +9,7 @@ from fpl_analytics.features import CS_POINTS, DEFCON_THRESHOLD, GOAL_POINTS
 
 # Blend: official FPL EP for the next GW, our model for the horizon.
 EP_BLEND = 0.55
+EP_BLEND_EARLY = 0.75
 
 
 def _minmax(series: pd.Series) -> pd.Series:
@@ -49,7 +50,9 @@ def _defcon_points(frame: pd.DataFrame) -> pd.Series:
 
 def _bonus_points(frame: pd.DataFrame) -> pd.Series:
     games = np.clip(frame["minutes"] / 90.0, 1, 40)
-    return np.clip(frame["bonus"] / games, 0, 1.8)
+    # One-week 2–3 BP is not a season rate.
+    cap = 0.45 if ("early_season" in frame and bool(frame["early_season"].iloc[0])) else 1.8
+    return np.clip(frame["bonus"] / games, 0, cap)
 
 
 def _saves_points(frame: pd.DataFrame) -> pd.Series:
@@ -61,6 +64,16 @@ def _saves_points(frame: pd.DataFrame) -> pd.Series:
 def expected_points(frame: pd.DataFrame) -> pd.DataFrame:
     """Per-90 model, then scale by minutes probability, role risk and fixtures."""
     out = frame.copy()
+    early = "early_season" in out and bool(out["early_season"].iloc[0])
+    if early:
+        # One-game xG/90 is not a rate (De Cuyper 1.47 xG in 77 ≠ 1.7/90).
+        w = np.clip(out["minutes"] / 900.0, 0.10, 1.0)
+        prior_xg = out["position"].map({"GKP": 0.0, "DEF": 0.06, "MID": 0.18, "FWD": 0.32}).astype(float)
+        prior_xa = out["position"].map({"GKP": 0.0, "DEF": 0.06, "MID": 0.16, "FWD": 0.12}).astype(float)
+        out = out.assign(
+            xg_p90=w * out["xg_p90"] + (1 - w) * prior_xg,
+            xa_p90=w * out["xa_p90"] + (1 - w) * prior_xa,
+        )
     p90 = (
         _appearance_points(out["effective_minutes"])
         + _attack_points(out) * out["attack_adj"] * out["effective_minutes"]
@@ -77,31 +90,45 @@ def expected_points(frame: pd.DataFrame) -> pd.DataFrame:
     out["xp_p90"] = p90
     model_gw = p90.copy()
     official = out["ep_next"].astype(float).fillna(model_gw)
-    out["xp_gw"] = EP_BLEND * official + (1 - EP_BLEND) * model_gw
+    blend = EP_BLEND_EARLY if early else EP_BLEND
+    out["xp_gw"] = blend * official + (1 - blend) * model_gw
     horizon = out["n_fixtures"].clip(lower=1)
-    # Horizon uses our model (fixture-adjusted already via mean FDR) plus a
-    # small pull toward last-season points/start for players with a sample.
+    # Do not treat GW1 totals as a season rate (Haaland would be 2 pts/start).
     last_per_start = np.where(
-        out["starts"] >= 10,
+        (~early) & (out["starts"] >= 10),
         out["total_points"] / out["starts"],
-        model_gw,
+        official,
     )
-    out["xp_horizon"] = (
-        0.65 * model_gw * horizon
-        + 0.20 * official * horizon
-        + 0.15 * last_per_start * out["effective_minutes"] * horizon
-    )
+    if early:
+        out["xp_horizon"] = (
+            0.25 * model_gw * horizon
+            + 0.75 * official * horizon
+        )
+    else:
+        out["xp_horizon"] = (
+            0.65 * model_gw * horizon
+            + 0.20 * official * horizon
+            + 0.15 * last_per_start * out["effective_minutes"] * horizon
+        )
     return out
 
 
 def consistency_score(frame: pd.DataFrame) -> pd.Series:
     """0–10. High start rate + DEFCON floor + moderate (not boom-bust) xGI."""
-    start_rate = np.clip(frame["starts"] / 38.0, 0, 1)
-    minutes_rate = np.clip(frame["minutes"] / 3420.0, 0, 1)
+    early = "early_season" in frame and bool(frame["early_season"].iloc[0])
+    if early:
+        started = (frame["minutes"] >= 60).astype(float)
+        start_rate = 0.55 + 0.35 * started
+        minutes_rate = np.clip(frame["minutes"] / 90.0, 0, 1)
+    else:
+        start_rate = np.clip(frame["starts"] / 38.0, 0, 1)
+        minutes_rate = np.clip(frame["minutes"] / 3420.0, 0, 1)
     floor = np.clip(frame["defcon_p90"] / 12.0, 0, 1)
     # Prefer players whose points came without needing a 20-pt haul every week.
-    ppg = frame["points_per_game"]
-    reliability = np.clip(ppg / 6.0, 0, 1)
+    if early:
+        reliability = np.clip(frame["ep_next"].fillna(0) / 6.0, 0, 1)
+    else:
+        reliability = np.clip(frame["points_per_game"] / 6.0, 0, 1)
     risk_penalty = 1 - frame["role_risk"]
     raw = (
         3.2 * start_rate
@@ -129,7 +156,11 @@ def underprice_residual(frame: pd.DataFrame) -> pd.Series:
     for _, group in frame.groupby("position"):
         idx = group.index
         x = group["price"].to_numpy()
-        y = group["total_points"].to_numpy(dtype=float)
+        y_col = "total_points"
+        if "early_season" in group and bool(group["early_season"].iloc[0]):
+            # One-week totals are not a price residual. Use FPL EP as the level.
+            y_col = "ep_next"
+        y = group[y_col].fillna(0).to_numpy(dtype=float)
         if len(x) < 8 or np.allclose(x, x[0]):
             residual.loc[idx] = 0.0
             continue

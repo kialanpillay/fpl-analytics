@@ -123,6 +123,7 @@ def players_frame(bootstrap: dict[str, Any], teams: pd.DataFrame) -> pd.DataFram
                 "chance_next": raw.get("chance_of_playing_next_round"),
                 "minutes": _i(raw.get("minutes")),
                 "starts": _i(raw.get("starts")),
+                "event_points": _i(raw.get("event_points")),
                 "total_points": _i(raw.get("total_points")),
                 "points_per_game": _f(raw.get("points_per_game")),
                 "goals": _i(raw.get("goals_scored")),
@@ -156,3 +157,25 @@ def players_frame(bootstrap: dict[str, Any], teams: pd.DataFrame) -> pd.DataFram
             }
         )
     return pd.DataFrame(rows)
+
+
+def apply_event_live(players: pd.DataFrame, live: dict[str, Any] | None) -> pd.DataFrame:
+    """Merge /event/{gw}/live/ totals onto the player table."""
+    out = players.copy()
+    if live:
+        by_id = {el["id"]: el.get("stats") or {} for el in live.get("elements", [])}
+        points, bonus, bps, minutes = [], [], [], []
+        for rec in out.itertuples(index=False):
+            stats = by_id.get(int(rec.id), {})
+            points.append(_i(stats.get("total_points"), int(rec.event_points)))
+            bonus.append(_i(stats.get("bonus"), int(rec.bonus)))
+            bps.append(_i(stats.get("bps"), int(rec.bps)))
+            minutes.append(_i(stats.get("minutes"), int(rec.minutes)))
+        out["event_points"] = points
+        out["bonus"] = bonus
+        out["bps"] = bps
+        out["gw_minutes"] = minutes
+    else:
+        out["gw_minutes"] = out["minutes"]
+    return out
+

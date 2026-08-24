@@ -10,7 +10,13 @@ from typing import Any
 import pandas as pd
 
 from fpl_analytics.api import FPLClient
-from fpl_analytics.catalog import fixtures_frame, players_frame, season_meta, teams_frame
+from fpl_analytics.catalog import (
+    apply_event_live,
+    fixtures_frame,
+    players_frame,
+    season_meta,
+    teams_frame,
+)
 from fpl_analytics.features import enrich
 from fpl_analytics.models import score
 from fpl_analytics.optimiser import (
@@ -77,16 +83,21 @@ def run_pipeline(
     bootstrap = client.bootstrap(force=force_refresh)
     fixtures_raw = client.fixtures(force=force_refresh)
     meta = season_meta(bootstrap)
+    early_season = (meta.current_event or 0) <= 3
     teams = teams_frame(bootstrap)
     fixtures = fixtures_frame(fixtures_raw)
+    gw = meta.current_event or 1
+    live = client.event_live(gw, force=force_refresh)
+    raw_players = apply_event_live(players_frame(bootstrap, teams), live)
     players = score(
         enrich(
-            players_frame(bootstrap, teams),
+            raw_players,
             fixtures,
             teams,
             next_event=meta.next_event,
             season_started=meta.season_started,
             horizon=horizon,
+            early_season=early_season,
         )
     )
 

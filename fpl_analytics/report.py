@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from fpl_analytics.optimiser import SquadPlan
+from fpl_analytics.optimiser import SquadPlan, pick_xi
 from fpl_analytics.pipeline import AnalysisBundle, player_notes, strategies
 
 COLS = [
@@ -16,6 +16,7 @@ COLS = [
     "team_short",
     "price",
     "ownership",
+    "event_points",
     "xp_gw",
     "xp_horizon",
     "ppp",
@@ -43,6 +44,49 @@ OBJECTIVE_LABELS = {
     "differential": "Differential",
     "xp": "xPts",
 }
+
+
+def _gw_review(bundle: AnalysisBundle) -> list[str]:
+    """Finished-GW actuals for the 15, with Haaland vs best-captain totals."""
+    squad = bundle.squad.copy()
+    if "event_points" not in squad.columns:
+        return []
+    scored = squad.copy()
+    scored["xp_gw"] = scored["event_points"].astype(float)
+    xi_ids, bench_ids = pick_xi(scored)
+    xi = squad.loc[squad["id"].isin(xi_ids)].sort_values("event_points", ascending=False)
+    bench = squad.loc[squad["id"].isin(bench_ids)].sort_values("event_points", ascending=False)
+    raw = float(xi["event_points"].sum())
+    cap_haal = squad.loc[squad["id"] == 411, "event_points"]
+    cap_pedro = squad.loc[squad["id"] == 165, "event_points"]
+    haal = float(cap_haal.iloc[0]) if not cap_haal.empty else 0.0
+    pedro = float(cap_pedro.iloc[0]) if not cap_pedro.empty else 0.0
+    best_row = squad.loc[squad["event_points"].idxmax()]
+    parts = [
+        "",
+        "GW1 Actuals",
+        "-" * 88,
+        _fmt(squad.sort_values(["element_type", "event_points"], ascending=[True, False]), extra=["bonus", "bps"]),
+        "",
+        "Retrospective best XI (formation rules, by GW1 points)",
+    ]
+    for rec in xi.itertuples(index=False):
+        parts.append(f"  * {rec.web_name:16} {rec.position} {rec.team_short:3}  {int(rec.event_points):2d} pts")
+    for rec in bench.itertuples(index=False):
+        parts.append(f"    {rec.web_name:16} {rec.position} {rec.team_short:3}  {int(rec.event_points):2d} pts")
+    parts.append(
+        f"XI {raw:.0f}  ·  Haaland (C) {raw + haal:.0f}  ·  "
+        f"{best_row.web_name} (C) {raw + float(best_row.event_points):.0f}"
+        + (f"  ·  João Pedro (C) {raw + pedro:.0f}" if best_row.id != 165 else "")
+    )
+    palmer = bundle.players.loc[bundle.players["id"] == 154]
+    if not palmer.empty:
+        p = palmer.iloc[0]
+        parts.append(
+            f"Palmer CHE {int(p.event_points)} pts (3 BP) — not in squad. "
+            f"GW2 xPts {p.xp_gw:.1f}  6-GW {p.xp_horizon:.1f}"
+        )
+    return parts
 
 
 def _plan_lines(plan: SquadPlan) -> str:
@@ -81,6 +125,7 @@ def render_text(bundle: AnalysisBundle) -> str:
         f"Dead Slots: {ev['dead_slots'] or 'none'}",
         f"Role Risk: {ev['risk_names'] or 'none'}",
     ]
+    parts += _gw_review(bundle)
     if ev["illegal_clubs"]:
         parts.append(f"Illegal Club Cap: {ev['illegal_clubs']}")
     if bundle.spec.warnings:

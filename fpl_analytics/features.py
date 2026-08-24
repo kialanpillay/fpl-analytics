@@ -30,7 +30,7 @@ def _parse_date(value: object) -> date | None:
         return None
 
 
-def minutes_probability(row: pd.Series, season_started: bool) -> float:
+def minutes_probability(row: pd.Series, season_started: bool, early_season: bool = False) -> float:
     """Probability the player starts and plays ~60+ minutes."""
     chance = row["chance_next"]
     if pd.isna(chance):
@@ -47,13 +47,21 @@ def minutes_probability(row: pd.Series, season_started: bool) -> float:
     if row["status"] in {"i", "u", "s", "n"}:
         return 0.05 * avail
 
+    minutes = float(row["minutes"])
+    starts = float(row["starts"])
+
+    # After GW1–3, season totals are a 1–3 game sample — do not treat as /38.
+    if early_season:
+        if minutes >= 60:
+            return float(np.clip(avail * 0.90, 0.05, 0.97))
+        if minutes >= 1:
+            return float(np.clip(avail * 0.40, 0.05, 0.85))
+        return float(np.clip(avail * 0.22, 0.05, 0.70))
+
     if season_started and row["form"] > 0:
-        # In-season: blend recent minutes proxy (form/ep) with start rate.
-        start_rate = min(1.0, row["starts"] / max(row.get("events_played", 1), 1))
+        start_rate = min(1.0, starts / max(float(row.get("events_played", 1) or 1), 1))
         return float(np.clip(avail * (0.35 + 0.65 * start_rate), 0.05, 1.0))
 
-    starts = float(row["starts"])
-    minutes = float(row["minutes"])
     start_rate = starts / 38.0
     minute_rate = minutes / 3420.0
     base = 0.55 * start_rate + 0.45 * minute_rate
@@ -66,7 +74,7 @@ def minutes_probability(row: pd.Series, season_started: bool) -> float:
     return float(np.clip(avail * (0.12 + 0.88 * base), 0.05, 0.97))
 
 
-def role_risk(row: pd.Series, as_of: date) -> float:
+def role_risk(row: pd.Series, as_of: date, early_season: bool = False) -> float:
     """Discount for new-club / rotation / unproven minutes (1 = no extra risk)."""
     risk = 1.0
     joined = _parse_date(row["team_join_date"])
@@ -74,6 +82,11 @@ def role_risk(row: pd.Series, as_of: date) -> float:
         risk *= 0.82
     elif joined and (as_of - joined).days < 200:
         risk *= 0.90
+    # After GW1–3, bootstrap minutes are this season only — 90 ≠ unproven.
+    if early_season:
+        if row["minutes"] == 0:
+            risk *= 0.72
+        return float(np.clip(risk, 0.35, 1.0))
     if row["minutes"] < 900:
         risk *= 0.78
     if row["minutes"] < 300:
@@ -162,13 +175,15 @@ def enrich(
     season_started: bool,
     horizon: int = 6,
     as_of: date | None = None,
+    early_season: bool = False,
 ) -> pd.DataFrame:
     as_of = as_of or date.today()
     frame = fixture_features(players, fixtures, teams, next_event, horizon)
+    frame["early_season"] = early_season
     frame["minutes_prob"] = frame.apply(
-        lambda r: minutes_probability(r, season_started), axis=1
+        lambda r: minutes_probability(r, season_started, early_season), axis=1
     )
-    frame["role_risk"] = frame.apply(lambda r: role_risk(r, as_of), axis=1)
+    frame["role_risk"] = frame.apply(lambda r: role_risk(r, as_of, early_season), axis=1)
     frame["effective_minutes"] = frame["minutes_prob"] * frame["role_risk"]
     frame["ppm_last"] = np.where(frame["price"] > 0, frame["total_points"] / frame["price"], 0.0)
     frame["set_piece"] = (
