@@ -149,6 +149,50 @@ def resolve_squad(spec: ManagerSquad, players: pd.DataFrame) -> pd.DataFrame:
     return frame.reset_index(drop=True)
 
 
+def save_squad(
+    spec: ManagerSquad,
+    path: Path | str | None = None,
+    players: pd.DataFrame | None = None,
+) -> Path:
+    """Write ``{id, name}`` rows plus bank / FTs / budget."""
+    dest = Path(path) if path is not None else spec.path
+    rows: list[dict[str, Any]] = []
+    lookup = None
+    if players is not None and not players.empty:
+        lookup = players.set_index("id")
+    for entry in spec.entries:
+        player_id = entry.player_id
+        name = entry.name
+        if player_id is not None and lookup is not None and player_id in lookup.index:
+            name = str(lookup.loc[player_id, "web_name"])
+        if player_id is None:
+            continue
+        rows.append({"id": int(player_id), "name": name or str(player_id)})
+    payload = {
+        "budget": float(spec.budget),
+        "bank": float(spec.bank),
+        "free_transfers": int(spec.free_transfers),
+        "players": rows,
+    }
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        "# FPL element id is the identity. name is a label (web_name, not the legal name).",
+        "# After a transfer, change the id — if the label no longer matches, analyse warns.",
+        "",
+        f"budget: {payload['budget']}",
+        f"bank: {payload['bank']}",
+        f"free_transfers: {payload['free_transfers']}",
+        "",
+        "players:",
+    ]
+    for row in rows:
+        name = yaml.safe_dump(str(row["name"]), default_style='"').strip()
+        lines.append(f"  - {{id: {row['id']}, name: {name}}}")
+    dest.write_text("\n".join(lines) + "\n")
+    spec.path = dest
+    return dest
+
+
 def evaluate_squad(squad: pd.DataFrame, team_limit: int = 3) -> dict[str, Any]:
     club_counts = squad.groupby("team_short").size().sort_values(ascending=False)
     pos_counts = squad.groupby("position").size().reindex(["GKP", "DEF", "MID", "FWD"]).fillna(0)

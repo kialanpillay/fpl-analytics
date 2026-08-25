@@ -163,11 +163,19 @@ def optimise_squad(
     budget: float = 100.0,
     team_limit: int = 3,
     locked_ids: set[int] | None = None,
+    banned_ids: set[int] | None = None,
 ) -> SquadPlan:
     if objective not in OBJECTIVES:
         raise ValueError(f"Unknown objective {objective}. Choose from {list(OBJECTIVES)}")
     pool = _eligible(players)
-    chosen = _solve_ilp(pool, objective, budget, team_limit, locked_ids=locked_ids)
+    chosen = _solve_ilp(
+        pool,
+        objective,
+        budget,
+        team_limit,
+        locked_ids=locked_ids,
+        banned_ids=banned_ids,
+    )
     if chosen is None:
         raise RuntimeError("Optimiser could not find a feasible 15. Relax locks or budget.")
     return _plan(chosen, objective)
@@ -260,3 +268,50 @@ def one_for_one(
         .head(top_n)
         .reset_index(drop=True)
     )
+
+
+_POS_ORDER = {"GKP": 0, "DEF": 1, "MID": 2, "FWD": 3}
+
+
+def pair_swaps(
+    outgoing: pd.DataFrame, incoming: pd.DataFrame
+) -> list[tuple[pd.Series | None, pd.Series | None]]:
+    """Pair Out/In by position. Within a position, lowest outgoing xH vs highest incoming xH."""
+    out_df = outgoing if outgoing is not None and not outgoing.empty else pd.DataFrame()
+    in_df = incoming if incoming is not None and not incoming.empty else pd.DataFrame()
+    if out_df.empty and in_df.empty:
+        return []
+    used_out: set[int] = set()
+    used_in: set[int] = set()
+    pairs: list[tuple[pd.Series | None, pd.Series | None]] = []
+    positions = sorted(
+        set(out_df["position"].tolist() if not out_df.empty else [])
+        | set(in_df["position"].tolist() if not in_df.empty else []),
+        key=lambda pos: _POS_ORDER.get(pos, 9),
+    )
+    sort_out = "xp_horizon" if not out_df.empty and "xp_horizon" in out_df.columns else "id"
+    sort_in = "xp_horizon" if not in_df.empty and "xp_horizon" in in_df.columns else "id"
+    for pos in positions:
+        outs = out_df.loc[out_df["position"] == pos].sort_values(sort_out, ascending=True, na_position="last")
+        inns = in_df.loc[in_df["position"] == pos].sort_values(sort_in, ascending=False, na_position="last")
+        for (_, out_row), (_, in_row) in zip(outs.iterrows(), inns.iterrows()):
+            pairs.append((out_row, in_row))
+            used_out.add(int(out_row["id"]))
+            used_in.add(int(in_row["id"]))
+    leftover_out = list(out_df.loc[~out_df["id"].isin(used_out)].iterrows()) if not out_df.empty else []
+    leftover_in = list(in_df.loc[~in_df["id"].isin(used_in)].iterrows()) if not in_df.empty else []
+    for i in range(max(len(leftover_out), len(leftover_in))):
+        out_row = leftover_out[i][1] if i < len(leftover_out) else None
+        in_row = leftover_in[i][1] if i < len(leftover_in) else None
+        pairs.append((out_row, in_row))
+    return pairs
+
+
+def hit_scenarios(lift: float, n_transfers: int) -> list[dict[str, float | int]]:
+    n = max(0, int(n_transfers))
+    if n == 0:
+        return []
+    return [
+        {"hits": hits, "cost": hits * 4, "net_horizon": round(float(lift) - hits * 4, 2)}
+        for hits in range(0, n + 1)
+    ]

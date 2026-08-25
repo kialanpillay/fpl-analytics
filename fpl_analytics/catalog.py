@@ -64,6 +64,7 @@ def teams_frame(bootstrap: dict[str, Any]) -> pd.DataFrame:
                 "team_id": team["id"],
                 "team": team["name"],
                 "team_short": team["short_name"],
+                "team_code": _i(team.get("code")),
                 "strength_overall_home": _i(team.get("strength_overall_home")),
                 "strength_overall_away": _i(team.get("strength_overall_away")),
                 "strength_attack_home": _i(team.get("strength_attack_home")),
@@ -115,6 +116,9 @@ def players_frame(bootstrap: dict[str, Any], teams: pd.DataFrame) -> pd.DataFram
                 "team_id": team_id,
                 "team": team["team"],
                 "team_short": team["team_short"],
+                "team_code": _i(raw.get("team_code")) or _i(team.get("team_code")),
+                "code": _i(raw.get("code")),
+                "photo": raw.get("photo") or "",
                 "price": raw["now_cost"] / 10.0,
                 "ownership": _f(raw.get("selected_by_percent")),
                 "status": raw.get("status") or "a",
@@ -167,10 +171,10 @@ def apply_event_live(players: pd.DataFrame, live: dict[str, Any] | None) -> pd.D
         points, bonus, bps, minutes = [], [], [], []
         for rec in out.itertuples(index=False):
             stats = by_id.get(int(rec.id), {})
-            points.append(_i(stats.get("total_points"), int(rec.event_points)))
-            bonus.append(_i(stats.get("bonus"), int(rec.bonus)))
-            bps.append(_i(stats.get("bps"), int(rec.bps)))
-            minutes.append(_i(stats.get("minutes"), int(rec.minutes)))
+            points.append(_i(stats.get("total_points"), _i(getattr(rec, "event_points", 0))))
+            bonus.append(_i(stats.get("bonus"), _i(getattr(rec, "bonus", 0))))
+            bps.append(_i(stats.get("bps"), _i(getattr(rec, "bps", 0))))
+            minutes.append(_i(stats.get("minutes"), _i(getattr(rec, "minutes", 0))))
         out["event_points"] = points
         out["bonus"] = bonus
         out["bps"] = bps

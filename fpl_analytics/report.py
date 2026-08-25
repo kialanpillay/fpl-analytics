@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
 
-from fpl_analytics.optimiser import SquadPlan, pick_xi
+from fpl_analytics.captaincy import rank_captaincy
+from fpl_analytics.live import players_for_ids
+from fpl_analytics.optimiser import SquadPlan, pair_swaps, pick_xi
 from fpl_analytics.pipeline import AnalysisBundle, player_notes, strategies
+from fpl_analytics.schemas import analysis_payload
 
 COLS = [
     "web_name",
@@ -47,46 +49,80 @@ OBJECTIVE_LABELS = {
 
 
 def _gw_review(bundle: AnalysisBundle) -> list[str]:
-    """Finished-GW actuals for the 15, with Haaland vs best-captain totals."""
+    """Finished-GW actuals. Prefer official picks/score when the pipeline fetched them."""
     squad = bundle.squad.copy()
-    if "event_points" not in squad.columns:
+    if "event_points" not in squad.columns or squad.empty:
         return []
+    gw = bundle.meta.current_event or bundle.meta.next_event
+    official = getattr(bundle, "official", None)
+    catalog = bundle.players if bundle.players is not None and not bundle.players.empty else squad
+    recs = rank_captaincy(squad, list(bundle.xi_ids or pick_xi(squad)[0]), n=2)
+    rec_c = recs.iloc[0] if not recs.empty else None
+    rec_label = rec_c.web_name if rec_c is not None else "—"
+    parts = [
+        "",
+        f"GW{gw} Actuals",
+        "-" * 88,
+        _fmt(squad.sort_values(["element_type", "event_points"], ascending=[True, False]), extra=["bonus", "bps"]),
+    ]
+    if official and official.get("xi_ids"):
+        xi = players_for_ids(official["xi_ids"], catalog, squad)
+        bench = players_for_ids(official.get("bench_ids") or [], catalog, squad)
+        cap_id = official.get("captain_id")
+        vice_id = official.get("vice_id")
+        parts += ["", "Official XI"]
+        for rec in xi.itertuples(index=False):
+            badge = " (C)" if rec.id == cap_id else (" (VC)" if rec.id == vice_id else "")
+            parts.append(f"  * {rec.web_name:16} {rec.position} {rec.team_short:3}  {int(rec.event_points):2d} pts{badge}")
+        for rec in bench.itertuples(index=False):
+            badge = " (C)" if rec.id == cap_id else (" (VC)" if rec.id == vice_id else "")
+            parts.append(f"    {rec.web_name:16} {rec.position} {rec.team_short:3}  {int(rec.event_points):2d} pts{badge}")
+        pts = official.get("points")
+        bench_pts = official.get("points_on_bench")
+        hits = official.get("hits") or 0
+        chip = official.get("chip")
+        line = f"Official {pts if pts is not None else '—'} Pts"
+        if bench_pts is not None:
+            line += f"  ·  Bench {bench_pts}"
+        if hits:
+            line += f"  ·  −{hits} Hits"
+        if chip:
+            line += f"  ·  {chip}"
+        line += f"  ·  {rec_label} (C rec)"
+        parts.append(line)
+        for sub in official.get("auto_subs") or []:
+            out_name = _name_for(catalog, squad, sub.get("out_id"))
+            in_name = _name_for(catalog, squad, sub.get("in_id"))
+            parts.append(f"  Auto-sub {out_name} -> {in_name}")
+        return parts
+
     scored = squad.copy()
     scored["xp_gw"] = scored["event_points"].astype(float)
     xi_ids, bench_ids = pick_xi(scored)
     xi = squad.loc[squad["id"].isin(xi_ids)].sort_values("event_points", ascending=False)
     bench = squad.loc[squad["id"].isin(bench_ids)].sort_values("event_points", ascending=False)
     raw = float(xi["event_points"].sum())
-    cap_haal = squad.loc[squad["id"] == 411, "event_points"]
-    cap_pedro = squad.loc[squad["id"] == 165, "event_points"]
-    haal = float(cap_haal.iloc[0]) if not cap_haal.empty else 0.0
-    pedro = float(cap_pedro.iloc[0]) if not cap_pedro.empty else 0.0
     best_row = squad.loc[squad["event_points"].idxmax()]
-    parts = [
-        "",
-        "GW1 Actuals",
-        "-" * 88,
-        _fmt(squad.sort_values(["element_type", "event_points"], ascending=[True, False]), extra=["bonus", "bps"]),
-        "",
-        "Retrospective best XI (formation rules, by GW1 points)",
-    ]
+    rec_pts = float(squad.loc[squad["id"] == rec_c.id, "event_points"].iloc[0]) if rec_c is not None else 0.0
+    parts += ["", "Retrospective best XI (formation rules, by GW points)"]
     for rec in xi.itertuples(index=False):
         parts.append(f"  * {rec.web_name:16} {rec.position} {rec.team_short:3}  {int(rec.event_points):2d} pts")
     for rec in bench.itertuples(index=False):
         parts.append(f"    {rec.web_name:16} {rec.position} {rec.team_short:3}  {int(rec.event_points):2d} pts")
     parts.append(
-        f"XI {raw:.0f}  ·  Haaland (C) {raw + haal:.0f}  ·  "
-        f"{best_row.web_name} (C) {raw + float(best_row.event_points):.0f}"
-        + (f"  ·  João Pedro (C) {raw + pedro:.0f}" if best_row.id != 165 else "")
+        f"XI {raw:.0f}  ·  {rec_label} (C rec) {raw + rec_pts:.0f}  ·  "
+        f"{best_row.web_name} (C actual) {raw + float(best_row.event_points):.0f}"
     )
-    palmer = bundle.players.loc[bundle.players["id"] == 154]
-    if not palmer.empty:
-        p = palmer.iloc[0]
-        parts.append(
-            f"Palmer CHE {int(p.event_points)} pts (3 BP) — not in squad. "
-            f"GW2 xPts {p.xp_gw:.1f}  6-GW {p.xp_horizon:.1f}"
-        )
     return parts
+
+
+def _name_for(catalog: pd.DataFrame, squad: pd.DataFrame, player_id: int | None) -> str:
+    if player_id is None:
+        return "—"
+    hit = players_for_ids([int(player_id)], catalog, squad)
+    if hit.empty:
+        return str(player_id)
+    return str(hit.iloc[0]["web_name"])
 
 
 def _plan_lines(plan: SquadPlan) -> str:
@@ -155,10 +191,14 @@ def render_text(bundle: AnalysisBundle) -> str:
         incoming = bundle.transfer_plan.players.loc[~bundle.transfer_plan.players["id"].isin(current_ids)]
         outgoing = bundle.squad.loc[~bundle.squad["id"].isin(set(bundle.transfer_plan.players["id"]))]
         parts += ["", f"Optimised {len(incoming)}-Transfer Plan (Balanced)", "-" * 88]
-        for o, i in zip(outgoing.itertuples(), incoming.itertuples()):
+        for out_row, in_row in pair_swaps(outgoing, incoming):
+            if out_row is None or in_row is None:
+                name = (in_row or out_row)["web_name"]
+                parts.append(f"  {name}")
+                continue
             parts.append(
-                f"  {o.web_name} £{o.price:.1f}  ->  {i.web_name} {i.team_short} £{i.price:.1f}  "
-                f"(xH {i.xp_horizon:.1f} vs {o.xp_horizon:.1f})"
+                f"  {out_row.web_name} £{out_row.price:.1f}  ->  {in_row.web_name} {in_row.team_short} £{in_row.price:.1f}  "
+                f"(xH {in_row.xp_horizon:.1f} vs {out_row.xp_horizon:.1f})"
             )
         parts.append(_plan_lines(bundle.transfer_plan))
 
@@ -186,45 +226,9 @@ def render_text(bundle: AnalysisBundle) -> str:
     return "\n".join(parts) + "\n"
 
 
-def _plan_json(plan: SquadPlan) -> dict:
-    return {
-        "objective": plan.objective,
-        "cost": plan.cost,
-        "xp_gw": plan.xp_gw,
-        "xp_horizon": plan.xp_horizon,
-        "ppp": plan.ppp,
-        "consistency": plan.consistency,
-        "xi": plan.players.loc[plan.players["id"].isin(plan.xi_ids), "web_name"].tolist(),
-        "bench": plan.players.loc[plan.players["id"].isin(plan.bench_ids), "web_name"].tolist(),
-        "players": plan.players[["id", "web_name", "position", "team_short", "price", "ownership", "xp_gw", "xp_horizon", "ppp", "consistency", "balanced"]].to_dict(orient="records"),
-    }
-
-
 def export_json(bundle: AnalysisBundle, path: Path | str) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "fetched_at": bundle.fetched_at,
-        "meta": {
-            "next_event": bundle.meta.next_event,
-            "deadline": bundle.meta.deadline,
-            "total_managers": bundle.meta.total_managers,
-            "horizon": bundle.horizon,
-            "season_started": bundle.meta.season_started,
-        },
-        "squad": bundle.squad[COLS + ["id", "role_risk", "effective_minutes", "fixture_run", "unorthodox"]].to_dict(orient="records"),
-        "squad_eval": bundle.squad_eval,
-        "notes": player_notes(bundle.squad),
-        "transfers": bundle.transfers.to_dict(orient="records") if not bundle.transfers.empty else [],
-        "transfer_plan": _plan_json(bundle.transfer_plan) if bundle.transfer_plan else None,
-        "plans": {k: _plan_json(v) for k, v in bundle.plans.items()},
-        "underpriced": bundle.underpriced(15)[COLS + ["id", "unorthodox"]].to_dict(orient="records"),
-        "unorthodox": bundle.unorthodox(15)[COLS + ["id"]].to_dict(orient="records"),
-        "leaders": {
-            pos: bundle.leaders("balanced", 10, pos)[COLS + ["id"]].to_dict(orient="records")
-            for pos in ("GKP", "DEF", "MID", "FWD")
-        },
-        "strategies": strategies(),
-    }
-    path.write_text(json.dumps(payload, indent=2, default=str))
+    payload = analysis_payload(bundle)
+    path.write_text(payload.model_dump_json(indent=2))
     return path

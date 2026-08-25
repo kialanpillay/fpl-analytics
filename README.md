@@ -18,7 +18,33 @@ Each deadline the package scores the pool and solves a legal 15 (2/5/5/3, £100m
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e ".[web,dev]"
+```
+
+Frontend (once):
+
+```bash
+cd web && npm install
+```
+
+## Web UI
+
+Alternate to the CLI. Vite on `:5173`, FastAPI on `:8000`.
+
+```bash
+pip install -e ".[web]"
+fpl-web
+# other terminal
+cd web && npm run dev
+```
+
+Open `http://127.0.0.1:5173`. Re-run analysis, inspect the pitch, transfers, captaincy, drafts, fixtures, live GW, and edit `config/squad.yaml` from the UI. Settings → Manager ID imports public picks.
+
+Production-style (API serves `web/dist`):
+
+```bash
+cd web && npm run build
+fpl-web
 ```
 
 ## Weekly Loop
@@ -62,5 +88,11 @@ Pre-season, `form` is 0; 2025/26 minutes, xG, and DEFCON remain on the element. 
 | `/fixtures/` | FDR, horizon run |
 | `/element-summary/{id}/` | Per-GW history |
 | `/event/{gw}/live/` | Live points |
+| `/entry/{id}/` | Public manager profile |
+| `/entry/{id}/event/{gw}/picks/` | Public GW picks |
+| `/event-status/` | Bonus / league processing |
+| `/team/set-piece-notes/` | Set-piece notes |
 
 No auth. Responses cache to `data/cache/` (TTL 30 min).
+
+Tests: `pytest`.

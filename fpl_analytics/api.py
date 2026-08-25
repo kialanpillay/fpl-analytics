@@ -4,8 +4,12 @@ Public, unauthenticated endpoints used throughout the season:
 
 * ``GET /bootstrap-static/`` — players, teams, events, scoring
 * ``GET /fixtures/`` — full fixture list with FDR
-* ``GET /element-summary/{id}/`` — per-gameweek history (used later in-season)
+* ``GET /element-summary/{id}/`` — per-gameweek history
 * ``GET /event/{gw}/live/`` — live gameweek points
+* ``GET /entry/{id}/`` — public manager profile
+* ``GET /entry/{id}/event/{gw}/picks/`` — public gameweek picks
+* ``GET /event-status/`` — bonus / league processing
+* ``GET /team/set-piece-notes/`` — set-piece taker notes
 """
 
 from __future__ import annotations
@@ -86,6 +90,38 @@ class FPLClient:
             cache_as=f"event-{gameweek}-live",
             force=force,
         )
+
+    def entry(self, manager_id: int, force: bool = False) -> dict[str, Any]:
+        return self.get(f"entry/{manager_id}/", cache_as=f"entry-{manager_id}", force=force)
+
+    def entry_history(self, manager_id: int, force: bool = False) -> dict[str, Any]:
+        return self.get(
+            f"entry/{manager_id}/history/",
+            cache_as=f"entry-{manager_id}-history",
+            force=force,
+        )
+
+    def entry_transfers(self, manager_id: int, force: bool = False) -> list[dict[str, Any]]:
+        return self.get(
+            f"entry/{manager_id}/transfers/",
+            cache_as=f"entry-{manager_id}-transfers",
+            force=force,
+        )
+
+    def entry_picks(
+        self, manager_id: int, gameweek: int, force: bool = False
+    ) -> dict[str, Any]:
+        return self.get(
+            f"entry/{manager_id}/event/{gameweek}/picks/",
+            cache_as=f"entry-{manager_id}-gw{gameweek}-picks",
+            force=force,
+        )
+
+    def event_status(self, force: bool = False) -> dict[str, Any]:
+        return self.get("event-status/", cache_as="event-status", force=force)
+
+    def set_piece_notes(self, force: bool = False) -> dict[str, Any]:
+        return self.get("team/set-piece-notes/", cache_as="set-piece-notes", force=force)
 
     def refresh(self) -> dict[str, Any]:
         bootstrap = self.bootstrap(force=True)

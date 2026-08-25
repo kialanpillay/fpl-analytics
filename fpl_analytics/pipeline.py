@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 
 from fpl_analytics.api import FPLClient
+from fpl_analytics.live import fetch_official_picks, resolve_manager_id
 from fpl_analytics.catalog import (
     apply_event_live,
     fixtures_frame,
@@ -23,6 +24,7 @@ from fpl_analytics.optimiser import (
     SquadPlan,
     one_for_one,
     optimise_squad,
+    pick_xi,
     suggest_transfers,
 )
 from fpl_analytics.research import STRATEGIES, note_for
@@ -47,6 +49,9 @@ class AnalysisBundle:
     transfers: pd.DataFrame = field(default_factory=pd.DataFrame)
     transfer_plan: SquadPlan | None = None
     horizon: int = 6
+    xi_ids: list[int] = field(default_factory=list)
+    bench_ids: list[int] = field(default_factory=list)
+    official: dict[str, Any] | None = None
 
     def available(self) -> pd.DataFrame:
         return self.players.loc[
@@ -78,6 +83,8 @@ def run_pipeline(
     force_refresh: bool = False,
     objectives: tuple[str, ...] = ("balanced", "ppp", "consistency", "differential"),
     max_transfers: int = 2,
+    bank: float | None = None,
+    free_transfers: int | None = None,
 ) -> AnalysisBundle:
     client = FPLClient()
     bootstrap = client.bootstrap(force=force_refresh)
@@ -102,8 +109,13 @@ def run_pipeline(
     )
 
     spec = load_squad(squad_path)
+    if bank is not None:
+        spec.bank = float(bank)
+    if free_transfers is not None:
+        spec.free_transfers = int(free_transfers)
     squad = resolve_squad(spec, players)
     ev = evaluate_squad(squad, team_limit=meta.team_limit)
+    xi_ids, bench_ids = pick_xi(squad) if not squad.empty else ([], [])
 
     plans: dict[str, SquadPlan] = {}
     for obj in objectives:
@@ -128,6 +140,8 @@ def run_pipeline(
     except Exception:
         transfer_plan = None
 
+    official = fetch_official_picks(client, resolve_manager_id(), gw, force=force_refresh)
+
     return AnalysisBundle(
         fetched_at=datetime.now(timezone.utc).isoformat(),
         meta=meta,
@@ -139,6 +153,9 @@ def run_pipeline(
         transfers=transfers,
         transfer_plan=transfer_plan,
         horizon=horizon,
+        xi_ids=[int(i) for i in xi_ids],
+        bench_ids=[int(i) for i in bench_ids],
+        official=official,
     )
 
 
