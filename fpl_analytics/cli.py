@@ -29,7 +29,7 @@ def _build_parser() -> argparse.ArgumentParser:
     rank.add_argument(
         "--sort",
         default="balanced",
-        choices=["balanced", "xp_horizon", "xp_gw", "ppp", "consistency", "residual", "differential"],
+        choices=["balanced", "aggressive", "template", "xp_horizon", "xp_gw", "ppp", "consistency", "residual", "differential"],
     )
     rank.add_argument("-n", type=int, default=15)
 
@@ -37,11 +37,16 @@ def _build_parser() -> argparse.ArgumentParser:
     opt.add_argument(
         "--mode",
         default="balanced",
-        choices=["balanced", "ppp", "consistency", "differential", "xp"],
+        choices=["balanced", "aggressive", "template", "ppp", "consistency", "differential", "xp"],
     )
 
     tr = sub.add_parser("transfers", help="Suggest 1-for-1 and N-transfer plans")
     tr.add_argument("--max", type=int, default=2)
+    tr.add_argument(
+        "--mode",
+        default="balanced",
+        choices=["balanced", "aggressive", "template", "ppp", "consistency", "differential", "xp"],
+    )
 
     sub.add_parser("differentials", help="Low-owned players the model likes")
     sub.add_parser("value", help="Underpriced vs current price band")
@@ -67,6 +72,7 @@ def main(argv: list[str] | None = None) -> None:
         horizon=args.horizon,
         force_refresh=args.refresh,
         max_transfers=getattr(args, "max", 2),
+        transfer_objective=getattr(args, "mode", "balanced"),
     )
 
     if cmd == "analyse":

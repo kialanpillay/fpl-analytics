@@ -25,11 +25,21 @@ XI_BOUNDS = {
 }
 OBJECTIVES = {
     "balanced": ("balanced", False),
+    "aggressive": ("aggressive", False),
+    "template": ("template", False),
     "xp": ("xp_horizon", False),
     "ppp": ("ppp", False),
     "consistency": ("consistency", False),
     "differential": ("differential", False),
 }
+DEFAULT_OBJECTIVES = (
+    "balanced",
+    "aggressive",
+    "template",
+    "ppp",
+    "consistency",
+    "differential",
+)
 
 
 @dataclass

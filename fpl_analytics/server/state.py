@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from fpl_analytics.optimiser import DEFAULT_OBJECTIVES
 from fpl_analytics.pipeline import AnalysisBundle, run_pipeline
 from fpl_analytics.server.settings import load_ui_settings
 from fpl_analytics.squad import DEFAULT_SQUAD_PATH
@@ -23,7 +24,7 @@ class AppState:
         horizon: int | None = None,
         force_refresh: bool = False,
         max_transfers: int = 2,
-        objectives: tuple[str, ...] = ("balanced", "ppp", "consistency", "differential"),
+        objectives: tuple[str, ...] = DEFAULT_OBJECTIVES,
         bank: float | None = None,
         free_transfers: int | None = None,
     ) -> AnalysisBundle:

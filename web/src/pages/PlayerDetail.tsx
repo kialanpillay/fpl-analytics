@@ -1,13 +1,14 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "../lib/api";
 import { money, num, toneClass } from "../lib/format";
-import { PlayerCard } from "../components/PlayerCard";
 
 export function PlayerDetail() {
   const { id } = useParams();
   const playerId = Number(id);
+  const [photoFailed, setPhotoFailed] = useState(false);
   const { data, isPending, error } = useQuery({
     queryKey: ["player", playerId],
     queryFn: () => api.player(playerId),
@@ -23,11 +24,27 @@ export function PlayerDetail() {
     xgi: Number(row.expected_goal_involvements ?? 0),
   }));
   const p = data.player;
+  const portrait = !photoFailed && p.photo_url;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start gap-6">
-        <PlayerCard player={p} />
+        <div className="card h-52 w-40 overflow-hidden rounded-xl bg-[#0e1420]">
+          {portrait ? (
+            <img
+              src={portrait}
+              alt={p.web_name}
+              className="h-full w-full object-cover object-top"
+              onError={() => setPhotoFailed(true)}
+            />
+          ) : p.shirt_url ? (
+            <img src={p.shirt_url} alt="" className="mx-auto mt-8 h-28 object-contain" />
+          ) : (
+            <div className="flex h-full items-center justify-center text-2xl text-mute">
+              {p.web_name.slice(0, 2)}
+            </div>
+          )}
+        </div>
         <div className="min-w-[16rem] flex-1">
           <h1 className="text-2xl font-semibold">
             {p.web_name}{" "}
@@ -96,7 +113,7 @@ export function PlayerDetail() {
             {data.fixtures.map((fx, i) => (
               <tr key={i} className="border-t border-line">
                 <td className="py-1.5">{String(fx.event ?? "—")}</td>
-                <td>{String(fx.opponent_name || fx.opponent || "—")}</td>
+                <td>{String(fx.opponent || "—")}</td>
                 <td>{fx.is_home ? "H" : "A"}</td>
                 <td>{String(fx.difficulty ?? "—")}</td>
               </tr>

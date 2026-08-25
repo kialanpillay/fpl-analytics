@@ -14,7 +14,7 @@ type Props = {
 export function PlayerCard({ player, captain, bench, compact, pointsKey = "xp_gw" }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
   const fdr = fdrFromFixture(player.next_fixture) ?? Math.round(player.fdr_mean || 3);
-  const photo = !imgFailed && player.photo_url;
+  const shirt = !imgFailed && player.shirt_url;
   const pts = pointsKey === "event_points" ? player.event_points : player.xp_gw;
 
   return (
@@ -29,20 +29,16 @@ export function PlayerCard({ player, captain, bench, compact, pointsKey = "xp_gw
           {captain}
         </span>
       )}
-      <div className="relative h-20 overflow-hidden bg-[#0e1420]">
-        {photo ? (
+      <div className="relative flex h-20 items-center justify-center overflow-hidden bg-[#0e1420]">
+        {shirt ? (
           <img
-            src={photo}
-            alt={player.web_name}
-            className="h-full w-full object-cover object-top"
+            src={shirt}
+            alt=""
+            className="h-[4.25rem] w-auto object-contain"
             onError={() => setImgFailed(true)}
           />
-        ) : player.shirt_url ? (
-          <img src={player.shirt_url} alt="" className="mx-auto mt-2 h-16 object-contain" />
         ) : (
-          <div className="flex h-full items-center justify-center text-lg text-mute">
-            {player.web_name.slice(0, 2)}
-          </div>
+          <div className="text-lg text-mute">{player.web_name.slice(0, 2)}</div>
         )}
       </div>
       <div className="space-y-1 px-2 py-1.5">

@@ -2,12 +2,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { money, num, signed } from "../lib/format";
 import { Pitch } from "../components/Pitch";
+import { ModeSelector } from "../components/ModeSelector";
+import { MODE_BLURB, type ObjectiveMode } from "../lib/modes";
+import { useState } from "react";
 
 export function Transfers() {
   const queryClient = useQueryClient();
-  const { data, isPending, isError, error } = useQuery({ queryKey: ["transfers"], queryFn: api.transfers });
+  const [mode, setMode] = useState<ObjectiveMode>("balanced");
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ["transfers", mode],
+    queryFn: () => (mode === "balanced" ? api.transfers() : api.solveTransfers({ objective: mode })),
+  });
   const apply = useMutation({
-    mutationFn: api.applyTransfers,
+    mutationFn: () =>
+      api.applyTransfers(data?.plan?.players.map((p) => ({ id: p.id, name: p.web_name }))),
     onSuccess: () => queryClient.invalidateQueries(),
   });
   if (isError) return <p className="text-rose-300">{(error as Error).message}</p>;
@@ -24,8 +32,9 @@ export function Transfers() {
             {nOut} Out · {data.hits} Hit Pts · Horizon Lift {signed(data.horizon_lift)}
           </p>
         </div>
-        <p className="mb-3 text-sm text-mute">
-          ILP re-solves the 15 under FPL rules, up to Max Transfers (Re-Run). Objective: Balanced. Uses bank and club cap. Pairs by position.
+        <ModeSelector value={mode} onChange={setMode} />
+        <p className="mb-3 mt-2 text-sm text-mute">
+          {MODE_BLURB[mode]}
         </p>
         {nOut === 0 ? (
           <p className="text-mute">No Improving Set Under Current Constraints.</p>
@@ -38,7 +47,8 @@ export function Transfers() {
                 <li key={`${out?.id ?? "out"}-${inn?.id ?? "in"}-${i}`}>
                   <span className="text-rose-300">{out?.web_name ?? "—"}</span> {out ? money(out.price) : ""}
                   {" → "}
-                  <span className="text-emerald-300">{inn?.web_name ?? "—"}</span> {inn?.team_short} {inn ? money(inn.price) : ""}
+                  <span className="text-emerald-300">{inn?.web_name ?? "—"}</span> {inn?.team_short}{" "}
+                  {inn ? money(inn.price) : ""}
                   {out && inn && (
                     <span className="text-mute">
                       {" "}

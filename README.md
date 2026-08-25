@@ -38,7 +38,7 @@ fpl-web
 cd web && npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. Re-run analysis, inspect the pitch, transfers, captaincy, drafts, fixtures, live GW, and edit `config/squad.yaml` from the UI. Settings → Manager ID imports public picks.
+Open `http://127.0.0.1:5173`. Re-run analysis, inspect the pitch, transfers, captaincy, wildcard, fixtures, and live GW. Settings → Import Picks overwrites `config/squad.yaml` from the official 15.
 
 Production-style (API serves `web/dist`):
 

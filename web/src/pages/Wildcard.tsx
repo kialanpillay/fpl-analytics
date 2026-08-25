@@ -2,42 +2,36 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { Pitch } from "../components/Pitch";
+import { ModeSelector } from "../components/ModeSelector";
 import { money, num } from "../lib/format";
+import { MODE_BLURB, type ObjectiveMode } from "../lib/modes";
 import type { Plan } from "../lib/types";
 
-const MODES = [
-  ["balanced", "Balanced"],
-  ["ppp", "PPP"],
-  ["consistency", "Consistency"],
-  ["differential", "Differential"],
-] as const;
-
-export function Drafts() {
-  const { data, isPending } = useQuery({ queryKey: ["drafts"], queryFn: api.drafts });
+export function Wildcard() {
+  const { data, isPending, isError, error } = useQuery({ queryKey: ["wildcard"], queryFn: api.wildcard });
   const analysis = useQuery({ queryKey: ["analysis"], queryFn: api.analysis });
-  const [mode, setMode] = useState<(typeof MODES)[number][0]>("balanced");
+  const [mode, setMode] = useState<ObjectiveMode>("balanced");
   const [locked, setLocked] = useState<number[]>([]);
   const [banned, setBanned] = useState<number[]>([]);
   const solve = useMutation({
-    mutationFn: () => api.solveDraft({ objective: mode, locked_ids: locked, banned_ids: banned }),
+    mutationFn: () => api.solveWildcard({ objective: mode, locked_ids: locked, banned_ids: banned }),
   });
 
-  if (isPending || !data) return <p className="text-mute">Solving Drafts…</p>;
+  if (isError) return <p className="text-rose-300">{(error as Error).message}</p>;
+  if (isPending || !data) return <p className="text-mute">Solving Wildcard…</p>;
   const plan: Plan | undefined = solve.data?.plan || data.plans[mode];
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">
-        {MODES.map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setMode(value)}
-            className={`rounded-md px-3 py-1.5 text-sm ${mode === value ? "bg-accent text-ink" : "bg-white/5 text-mute"}`}
-          >
-            {label}
-          </button>
-        ))}
+      <div>
+        <h1 className="mb-2 text-lg font-semibold">Wildcard</h1>
+        <ModeSelector
+          value={mode}
+          onChange={(next) => {
+            setMode(next);
+          }}
+        />
+        <p className="mt-2 text-sm text-mute">{MODE_BLURB[mode]}</p>
       </div>
       {plan && (
         <p className="text-sm text-mute">
@@ -91,7 +85,7 @@ export function Drafts() {
       {plan ? (
         <Pitch players={plan.players} xiIds={plan.xi_ids} benchIds={plan.bench_ids} />
       ) : (
-        <p className="text-amber-300">No Plan For {mode}. Is Pulp Installed?</p>
+        <p className="text-amber-300">No Plan For {mode}. Is Pulp Installed? Re-Run To Compute New Modes.</p>
       )}
       {solve.data && (
         <ul className="space-y-1 text-sm text-mute">
@@ -102,12 +96,6 @@ export function Drafts() {
               <span className="text-emerald-300">{swap.in?.web_name ?? "—"}</span>
             </li>
           ))}
-          {!solve.data.swaps?.length && (
-            <li>
-              In: {solve.data.incoming.map((p) => p.web_name).join(", ") || "—"} · Out:{" "}
-              {solve.data.outgoing.map((p) => p.web_name).join(", ") || "—"}
-            </li>
-          )}
         </ul>
       )}
     </div>

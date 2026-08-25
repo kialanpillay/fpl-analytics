@@ -24,7 +24,7 @@ export function RerunPanel({ analysis }: { analysis: Analysis }) {
       queryClient.setQueryData(["analysis"], data);
       queryClient.invalidateQueries({ queryKey: ["transfers"] });
       queryClient.invalidateQueries({ queryKey: ["captaincy"] });
-      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      queryClient.invalidateQueries({ queryKey: ["wildcard"] });
       queryClient.invalidateQueries({ queryKey: ["players"] });
       queryClient.invalidateQueries({ queryKey: ["live"] });
       queryClient.invalidateQueries({ queryKey: ["fixtures"] });

@@ -9,6 +9,7 @@ import type {
   Settings,
   TransfersPayload,
 } from "./types";
+import type { ObjectiveMode } from "./modes";
 
 const DEFAULT_TIMEOUT_MS = 180_000;
 
@@ -48,16 +49,19 @@ export const api = {
   run: (body: RunBody) =>
     request<Analysis>("/api/analysis/run", { method: "POST", body: JSON.stringify(body) }),
   squad: () => request("/api/squad"),
-  putSquad: (body: { players: { id: number; name?: string }[]; bank?: number; free_transfers?: number }) =>
-    request<Analysis>("/api/squad", { method: "PUT", body: JSON.stringify(body) }),
   importEntry: (manager_id: number) =>
     request<{ manager_id: number; team_name: string; player_name: string; analysis: Analysis }>(
       "/api/squad/import-entry",
       { method: "POST", body: JSON.stringify({ manager_id }) },
     ),
   transfers: () => request<TransfersPayload>("/api/transfers"),
-  applyTransfers: () =>
-    request<Analysis>("/api/transfers/apply", { method: "POST", body: JSON.stringify({ use_plan: true }) }),
+  applyTransfers: (players?: { id: number; name?: string }[]) =>
+    request<Analysis>("/api/transfers/apply", {
+      method: "POST",
+      body: JSON.stringify(players?.length ? { players } : { use_plan: true }),
+    }),
+  solveTransfers: (body: { objective: ObjectiveMode; max_transfers?: number }) =>
+    request<TransfersPayload>("/api/transfers/solve", { method: "POST", body: JSON.stringify(body) }),
   captaincy: () => request<CaptaincyPayload>("/api/captaincy"),
   players: (q: { position?: string; sort?: string; n?: number } = {}) => {
     const params = new URLSearchParams();
@@ -67,10 +71,10 @@ export const api = {
     return request<{ players: Player[]; sort: string; n: number }>(`/api/players?${params}`);
   },
   player: (id: number) => request<PlayerDetail>(`/api/players/${id}`),
-  drafts: () => request<{ plans: Analysis["plans"]; pulp: boolean }>("/api/drafts"),
-  solveDraft: (body: { objective: string; locked_ids: number[]; banned_ids: number[]; budget?: number }) =>
+  wildcard: () => request<{ plans: Analysis["plans"]; pulp: boolean }>("/api/wildcard"),
+  solveWildcard: (body: { objective: string; locked_ids: number[]; banned_ids: number[]; budget?: number }) =>
     request<{ plan: Analysis["plans"][string]; incoming: Player[]; outgoing: Player[]; swaps: { out: Player | null; in: Player | null }[] }>(
-      "/api/drafts/solve",
+      "/api/wildcard/solve",
       { method: "POST", body: JSON.stringify(body) },
     ),
   fixtures: (horizon?: number) =>

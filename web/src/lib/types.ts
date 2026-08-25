@@ -22,6 +22,8 @@ export type Player = {
   ppp?: number;
   consistency?: number;
   balanced?: number;
+  aggressive?: number;
+  template?: number;
   residual?: number;
   differential?: number;
   minutes_prob?: number;
@@ -150,6 +152,7 @@ export type TransfersPayload = {
   hits: number;
   horizon_lift: number;
   hit_table: { hits: number; cost: number; net_horizon: number }[];
+  objective?: string;
 };
 
 export type CaptaincyPayload = {

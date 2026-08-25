@@ -41,6 +41,8 @@ def _fmt(frame: pd.DataFrame, extra: list[str] | None = None) -> str:
 
 OBJECTIVE_LABELS = {
     "balanced": "Balanced",
+    "aggressive": "Aggressive",
+    "template": "Template",
     "ppp": "PPP",
     "consistency": "Consistency",
     "differential": "Differential",
@@ -203,10 +205,12 @@ def render_text(bundle: AnalysisBundle) -> str:
         parts.append(_plan_lines(bundle.transfer_plan))
 
     for key, title in (
-        ("balanced", "Wildcard Draft — Balanced"),
-        ("ppp", "Wildcard Draft — Points Per Pound"),
-        ("consistency", "Wildcard Draft — Consistency"),
-        ("differential", "Wildcard Draft — Differential"),
+        ("balanced", "Wildcard — Balanced"),
+        ("aggressive", "Wildcard — Aggressive"),
+        ("template", "Wildcard — Template"),
+        ("ppp", "Wildcard — Points Per Pound"),
+        ("consistency", "Wildcard — Consistency"),
+        ("differential", "Wildcard — Differential"),
     ):
         plan = bundle.plans.get(key)
         if plan:

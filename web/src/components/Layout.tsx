@@ -9,7 +9,7 @@ const NAV = [
   ["/transfers", "Transfers"],
   ["/captaincy", "Captaincy"],
   ["/players", "Players"],
-  ["/drafts", "Drafts"],
+  ["/wildcard", "Wildcard"],
   ["/fixtures", "Fixtures"],
   ["/live", "Live"],
   ["/settings", "Settings"],

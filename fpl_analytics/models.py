@@ -95,7 +95,7 @@ def expected_points(frame: pd.DataFrame) -> pd.DataFrame:
     horizon = out["n_fixtures"].clip(lower=1)
     # Do not treat GW1 totals as a season rate (Haaland would be 2 pts/start).
     last_per_start = np.where(
-        (~early) & (out["starts"] >= 10),
+        (not early) & (out["starts"] >= 10),
         out["total_points"] / out["starts"],
         official,
     )
@@ -185,6 +185,15 @@ def score(frame: pd.DataFrame) -> pd.DataFrame:
     out["balanced"] = (
         0.50 * out["xp_n"] + 0.28 * out["ppp_n"] + 0.22 * out["cons_n"]
     ) * 10
+    # Ceiling: next-GW haul + horizon + attacking threat. No PPP / floor, so
+    # premiums are not crowded out by 4.5 DEFCON enablers.
+    xgi = out["xgi_p90"] if "xgi_p90" in out else out["xg_p90"] + out["xa_p90"]
+    out["xp_gw_n"] = _minmax(out["xp_gw"])
+    out["xgi_n"] = _minmax(xgi.fillna(0))
+    out["aggressive"] = (0.45 * out["xp_gw_n"] + 0.35 * out["xp_n"] + 0.20 * out["xgi_n"]) * 10
+    # Field-following counterpart to differential: points + minutes floor + ownership.
+    out["own_n"] = _minmax(out["ownership"].fillna(0))
+    out["template"] = (0.50 * out["xp_n"] + 0.20 * out["cons_n"] + 0.30 * out["own_n"]) * 10
     out["differential"] = out["balanced"] * (
         1.0 + 0.45 * (1.0 - np.clip(out["ownership"] / 25.0, 0, 1))
     )

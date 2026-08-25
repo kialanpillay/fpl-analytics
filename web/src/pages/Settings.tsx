@@ -30,6 +30,7 @@ export function Settings() {
       <h1 className="text-lg font-semibold">Settings</h1>
       <p className="text-sm text-mute">
         Squad File: <span className="text-slate-200">{data.squad_path}</span>
+        . Import Picks Overwrites It From The Official 15.
       </p>
       <label className="block text-sm text-mute">
         Default Horizon

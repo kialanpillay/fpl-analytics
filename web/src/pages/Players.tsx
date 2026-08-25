@@ -91,6 +91,8 @@ export function Players() {
           {(
             [
               ["balanced", "Balanced"],
+              ["aggressive", "Aggressive"],
+              ["template", "Template"],
               ["xp_horizon", "Horizon xPts"],
               ["xp_gw", "GW xPts"],
               ["ppp", "PPP"],

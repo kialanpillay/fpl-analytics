@@ -5,7 +5,7 @@ import { Transfers } from "./pages/Transfers";
 import { Captaincy } from "./pages/Captaincy";
 import { Players } from "./pages/Players";
 import { PlayerDetail } from "./pages/PlayerDetail";
-import { Drafts } from "./pages/Drafts";
+import { Wildcard } from "./pages/Wildcard";
 import { Fixtures } from "./pages/Fixtures";
 import { Live } from "./pages/Live";
 import { Settings } from "./pages/Settings";
@@ -19,7 +19,8 @@ export function App() {
         <Route path="captaincy" element={<Captaincy />} />
         <Route path="players" element={<Players />} />
         <Route path="players/:id" element={<PlayerDetail />} />
-        <Route path="drafts" element={<Drafts />} />
+        <Route path="wildcard" element={<Wildcard />} />
+        <Route path="drafts" element={<Navigate to="/wildcard" replace />} />
         <Route path="fixtures" element={<Fixtures />} />
         <Route path="live" element={<Live />} />
         <Route path="settings" element={<Settings />} />

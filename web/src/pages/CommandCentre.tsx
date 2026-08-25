@@ -4,7 +4,6 @@ import { KpiStrip } from "../components/KpiStrip";
 import { Notes } from "../components/Notes";
 import { Pitch } from "../components/Pitch";
 import { RerunPanel } from "../components/RerunPanel";
-import { SquadEditor } from "../components/SquadEditor";
 
 export function CommandCentre() {
   const { data, isPending, isError, error } = useQuery({ queryKey: ["analysis"], queryFn: api.analysis });
@@ -31,7 +30,6 @@ export function CommandCentre() {
         viceId={cap.data?.vice?.id}
       />
       <Notes notes={data.notes} strategies={data.strategies} warnings={data.warnings} />
-      <SquadEditor analysis={data} />
     </div>
   );
 }

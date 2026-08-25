@@ -21,6 +21,7 @@ from fpl_analytics.catalog import (
 from fpl_analytics.features import enrich
 from fpl_analytics.models import score
 from fpl_analytics.optimiser import (
+    DEFAULT_OBJECTIVES,
     SquadPlan,
     one_for_one,
     optimise_squad,
@@ -81,10 +82,11 @@ def run_pipeline(
     squad_path: Path | str = DEFAULT_SQUAD_PATH,
     horizon: int = 6,
     force_refresh: bool = False,
-    objectives: tuple[str, ...] = ("balanced", "ppp", "consistency", "differential"),
+    objectives: tuple[str, ...] = DEFAULT_OBJECTIVES,
     max_transfers: int = 2,
     bank: float | None = None,
     free_transfers: int | None = None,
+    transfer_objective: str = "balanced",
 ) -> AnalysisBundle:
     client = FPLClient()
     bootstrap = client.bootstrap(force=force_refresh)
@@ -132,7 +134,7 @@ def run_pipeline(
             squad,
             players,
             max_transfers=max_transfers,
-            objective="balanced",
+            objective=transfer_objective,
             budget=spec.budget,
             bank=spec.bank,
             team_limit=meta.team_limit,

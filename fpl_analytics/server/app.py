@@ -14,7 +14,14 @@ from fpl_analytics import __version__
 from fpl_analytics.api import DEFAULT_CACHE_DIR, FPLClient
 from fpl_analytics.captaincy import rank_captaincy
 from fpl_analytics.live import fetch_official_picks, players_for_ids
-from fpl_analytics.optimiser import OBJECTIVES, hit_scenarios, optimise_squad, pulp
+from fpl_analytics.optimiser import (
+    DEFAULT_OBJECTIVES,
+    OBJECTIVES,
+    hit_scenarios,
+    optimise_squad,
+    pulp,
+    suggest_transfers,
+)
 from fpl_analytics.pipeline import player_notes, strategies
 from fpl_analytics.research import note_for
 from fpl_analytics.schemas import (
@@ -53,9 +60,7 @@ class RunBody(BaseModel):
     horizon: int | None = None
     refresh: bool = False
     max_transfers: int = 2
-    objectives: list[str] = Field(
-        default_factory=lambda: ["balanced", "ppp", "consistency", "differential"]
-    )
+    objectives: list[str] = Field(default_factory=lambda: list(DEFAULT_OBJECTIVES))
     bank: float | None = None
     free_transfers: int | None = None
 
@@ -85,6 +90,11 @@ class SettingsBody(BaseModel):
 class ApplyTransfersBody(BaseModel):
     use_plan: bool = True
     players: list[dict] | None = None
+
+
+class TransferSolveBody(BaseModel):
+    objective: str = "balanced"
+    max_transfers: int | None = None
 
 
 def _cache_age() -> float | None:
@@ -233,21 +243,21 @@ def import_entry(body: ImportEntryBody) -> dict:
     }
 
 
-@app.get("/api/transfers")
-def get_transfers() -> dict:
-    bundle = STATE.get_bundle()
+def _transfers_payload(bundle, plan, objective: str) -> dict:
     payload = analysis_payload(bundle)
     diff = {"incoming": [], "outgoing": [], "swaps": [], "n_transfers": 0}
     hits = 0
     lift = 0.0
-    if bundle.transfer_plan:
-        diff = squad_diff(bundle.squad, bundle.transfer_plan.players)
+    plan_out = None
+    if plan:
+        diff = squad_diff(bundle.squad, plan.players)
         n = int(diff["n_transfers"])
         hits = max(0, n - int(bundle.spec.free_transfers)) * 4
-        lift = float(bundle.transfer_plan.xp_horizon) - float(bundle.squad_eval["xp_horizon"])
+        lift = float(plan.xp_horizon) - float(bundle.squad_eval["xp_horizon"])
+        plan_out = plan_payload(plan).model_dump()
     return {
         "one_for_one": payload.transfers,
-        "plan": payload.transfer_plan.model_dump() if payload.transfer_plan else None,
+        "plan": plan_out,
         "incoming": diff["incoming"],
         "outgoing": diff["outgoing"],
         "swaps": diff["swaps"],
@@ -257,7 +267,40 @@ def get_transfers() -> dict:
         "hits": hits,
         "horizon_lift": round(lift, 2),
         "hit_table": hit_scenarios(lift, int(diff["n_transfers"])),
+        "objective": objective,
     }
+
+
+@app.get("/api/transfers")
+def get_transfers() -> dict:
+    bundle = STATE.get_bundle()
+    return _transfers_payload(bundle, bundle.transfer_plan, "balanced")
+
+
+@app.post("/api/transfers/solve")
+def solve_transfers(body: TransferSolveBody | None = None) -> dict:
+    body = body or TransferSolveBody()
+    if body.objective not in OBJECTIVES:
+        raise HTTPException(400, f"Unknown objective {body.objective}")
+    if pulp is None:
+        raise HTTPException(503, "pulp is required for optimisation")
+    bundle = STATE.get_bundle()
+    max_transfers = body.max_transfers or int(STATE.last_params.get("max_transfers") or 2)
+    try:
+        plan = suggest_transfers(
+            bundle.squad,
+            bundle.players,
+            max_transfers=max_transfers,
+            objective=body.objective,
+            budget=bundle.spec.budget,
+            bank=bundle.spec.bank,
+            team_limit=bundle.meta.team_limit,
+        )
+    except Exception as exc:
+        if "No improving" in str(exc) or "constraints" in str(exc).lower():
+            return _transfers_payload(bundle, None, body.objective)
+        raise HTTPException(422, str(exc)) from exc
+    return _transfers_payload(bundle, plan, body.objective)
 
 
 @app.post("/api/transfers/apply")
@@ -333,7 +376,7 @@ def get_player(player_id: int, refresh: bool = False) -> dict:
     except Exception as exc:
         raise HTTPException(502, f"element-summary failed: {exc}") from exc
     history = summary.get("history") or []
-    fixtures = summary.get("fixtures") or []
+    fixtures = _named_fixtures(summary.get("fixtures") or [], bundle.players)
     history_past = summary.get("history_past") or []
     return {
         "player": player,
@@ -345,8 +388,36 @@ def get_player(player_id: int, refresh: bool = False) -> dict:
     }
 
 
+def _named_fixtures(raw: list[dict], players) -> list[dict]:
+    """element-summary fixtures have team_h / team_a ids, not opponent names."""
+    names = {
+        int(tid): str(short)
+        for tid, short in players.drop_duplicates("team_id")
+        .set_index("team_id")["team_short"]
+        .items()
+    }
+    rows = []
+    for fx in raw:
+        home = bool(fx.get("is_home"))
+        try:
+            opp_id = int(fx["team_a"] if home else fx["team_h"])
+        except (KeyError, TypeError, ValueError):
+            opp_id = None
+        rows.append(
+            {
+                "event": fx.get("event"),
+                "opponent": names.get(opp_id),
+                "is_home": home,
+                "difficulty": fx.get("difficulty"),
+                "kickoff": fx.get("kickoff_time"),
+            }
+        )
+    return rows
+
+
+@app.get("/api/wildcard")
 @app.get("/api/drafts")
-def get_drafts() -> dict:
+def get_wildcard() -> dict:
     bundle = STATE.get_bundle()
     payload = analysis_payload(bundle)
     return {
@@ -355,8 +426,9 @@ def get_drafts() -> dict:
     }
 
 
+@app.post("/api/wildcard/solve")
 @app.post("/api/drafts/solve")
-def solve_draft(body: DraftSolveBody) -> dict:
+def solve_wildcard(body: DraftSolveBody) -> dict:
     if pulp is None:
         raise HTTPException(503, "pulp is required for optimisation")
     if body.objective not in OBJECTIVES:
