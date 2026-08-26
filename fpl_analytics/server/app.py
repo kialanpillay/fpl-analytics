@@ -47,8 +47,8 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
+        "http://localhost:8009",
+        "http://127.0.0.1:8009",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -567,7 +567,7 @@ def main() -> None:
     import uvicorn
 
     reload = os.environ.get("FPL_WEB_RELOAD", "").lower() in {"1", "true", "yes"}
-    uvicorn.run("fpl_analytics.server.app:app", host="127.0.0.1", port=8000, reload=reload)
+    uvicorn.run("fpl_analytics.server.app:app", host="127.0.0.1", port=8009, reload=reload)
 
 
 if WEB_DIST.is_dir():

@@ -29,7 +29,7 @@ cd web && npm install
 
 ## Web UI
 
-Alternate to the CLI. Vite on `:5173`, FastAPI on `:8000`.
+Alternate to the CLI. Vite on `:5173`, FastAPI on `:8009`.
 
 ```bash
 pip install -e ".[web]"
