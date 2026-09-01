@@ -34,7 +34,7 @@ from fpl_analytics.schemas import (
 )
 from fpl_analytics.server.settings import load_ui_settings, save_ui_settings
 from fpl_analytics.server.state import STATE
-from fpl_analytics.squad import SquadEntry, load_squad, save_squad
+from fpl_analytics.squad import SquadEntry
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 WEB_DIST = ROOT / "web" / "dist"
@@ -129,14 +129,13 @@ def meta() -> dict:
 
 @app.get("/api/settings")
 def get_settings() -> dict:
-    spec = load_squad()
     ui = load_ui_settings()
+    spec = STATE.bundle.spec if STATE.bundle is not None else None
     return {
         **ui,
-        "bank": spec.bank,
-        "free_transfers": spec.free_transfers,
-        "budget": spec.budget,
-        "squad_path": str(spec.path),
+        "bank": spec.bank if spec else 0.0,
+        "free_transfers": spec.free_transfers if spec else 1,
+        "budget": spec.budget if spec else 100.0,
     }
 
 
@@ -186,22 +185,17 @@ def get_squad() -> dict:
 
 @app.put("/api/squad")
 def put_squad(body: SquadWriteBody) -> dict:
-    spec = load_squad()
-    entries = []
+    ids = []
     for raw in body.players:
         player_id = raw.get("id")
         if player_id is None:
             raise HTTPException(400, "Each player needs an id")
-        entries.append(SquadEntry(player_id=int(player_id), name=raw.get("name")))
-    spec.entries = entries
-    if body.bank is not None:
-        spec.bank = float(body.bank)
-    if body.free_transfers is not None:
-        spec.free_transfers = int(body.free_transfers)
-    if body.budget is not None:
-        spec.budget = float(body.budget)
-    save_squad(spec)
-    bundle = STATE.run()
+        ids.append(int(player_id))
+    bundle = STATE.run(
+        squad_ids=ids,
+        bank=body.bank,
+        free_transfers=body.free_transfers,
+    )
     return analysis_payload(bundle).model_dump()
 
 
@@ -228,13 +222,7 @@ def import_entry(body: ImportEntryBody) -> dict:
     picks = picks_payload.get("picks") or []
     if len(picks) < 15:
         raise HTTPException(502, f"Expected 15 picks, got {len(picks)}")
-    spec = load_squad()
-    spec.entries = [
-        SquadEntry(player_id=int(p["element"]), name=None) for p in picks[:15]
-    ]
-    save_squad(spec)
-    bundle = STATE.run()
-    save_squad(bundle.spec, players=bundle.squad)
+    bundle = STATE.run(force_refresh=True)
     return {
         "manager_id": body.manager_id,
         "team_name": entry.get("name"),
@@ -316,10 +304,8 @@ def apply_transfers(body: ApplyTransfersBody | None = None) -> dict:
         ]
     else:
         raise HTTPException(400, "No transfer plan to apply")
-    spec = bundle.spec
-    spec.entries = entries
-    save_squad(spec, players=bundle.players)
-    return analysis_payload(STATE.run()).model_dump()
+    ids = [int(e.player_id) for e in entries if e.player_id is not None]
+    return analysis_payload(STATE.run(squad_ids=ids)).model_dump()
 
 
 @app.get("/api/captaincy")

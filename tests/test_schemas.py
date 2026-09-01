@@ -78,7 +78,6 @@ def test_analysis_payload_round_trip():
         budget=100.0,
         bank=0.5,
         free_transfers=1,
-        path=__file__,
         warnings=[],
     )
     plan = SquadPlan(

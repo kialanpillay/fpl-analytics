@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
 from fpl_analytics.api import FPLClient
-from fpl_analytics.live import fetch_official_picks, resolve_manager_id
+from fpl_analytics.live import load_official_squad, resolve_manager_id
 from fpl_analytics.catalog import (
     apply_event_live,
     fixtures_frame,
@@ -30,11 +29,10 @@ from fpl_analytics.optimiser import (
 )
 from fpl_analytics.research import STRATEGIES, note_for
 from fpl_analytics.squad import (
-    DEFAULT_SQUAD_PATH,
     ManagerSquad,
     evaluate_squad,
-    load_squad,
     resolve_squad,
+    spec_from_ids,
 )
 
 
@@ -79,7 +77,6 @@ class AnalysisBundle:
 
 
 def run_pipeline(
-    squad_path: Path | str = DEFAULT_SQUAD_PATH,
     horizon: int = 6,
     force_refresh: bool = False,
     objectives: tuple[str, ...] = DEFAULT_OBJECTIVES,
@@ -87,6 +84,8 @@ def run_pipeline(
     bank: float | None = None,
     free_transfers: int | None = None,
     transfer_objective: str = "balanced",
+    squad_ids: list[int] | None = None,
+    manager_id: int | None = None,
 ) -> AnalysisBundle:
     client = FPLClient()
     bootstrap = client.bootstrap(force=force_refresh)
@@ -110,11 +109,18 @@ def run_pipeline(
         )
     )
 
-    spec = load_squad(squad_path)
-    if bank is not None:
-        spec.bank = float(bank)
-    if free_transfers is not None:
-        spec.free_transfers = int(free_transfers)
+    official_ids, official, official_bank, official_fts = load_official_squad(
+        client,
+        manager_id if manager_id is not None else resolve_manager_id(),
+        gw,
+        force=force_refresh,
+    )
+    spec = spec_from_ids(
+        squad_ids if squad_ids else official_ids,
+        budget=meta.budget,
+        bank=official_bank if bank is None else float(bank),
+        free_transfers=official_fts if free_transfers is None else int(free_transfers),
+    )
     squad = resolve_squad(spec, players)
     ev = evaluate_squad(squad, team_limit=meta.team_limit)
     xi_ids, bench_ids = pick_xi(squad) if not squad.empty else ([], [])
@@ -141,8 +147,6 @@ def run_pipeline(
         )
     except Exception:
         transfer_plan = None
-
-    official = fetch_official_picks(client, resolve_manager_id(), gw, force=force_refresh)
 
     return AnalysisBundle(
         fetched_at=datetime.now(timezone.utc).isoformat(),

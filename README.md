@@ -11,7 +11,7 @@ Each deadline the package scores the pool and solves a legal 15 (2/5/5/3, £100m
 - **Consistency** — start rate, minutes, DEFCON floor, role risk
 - **Price Residual** — last-season points vs current price band
 - **Unorthodox** — high model score, ownership &lt; 10%
-- **Transfers** — 1-for-1 and N-swap plans from `config/squad.yaml`
+- **Transfers** — 1-for-1 and N-swap plans from the official FPL 15
 
 ## Setup
 
@@ -38,7 +38,7 @@ fpl-web
 cd web && npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. Re-run analysis, inspect the pitch, transfers, captaincy, wildcard, fixtures, and live GW. Settings → Import Picks overwrites `config/squad.yaml` from the official 15.
+Open `http://127.0.0.1:5173`. Re-run analysis, inspect the pitch, transfers, captaincy, wildcard, fixtures, and live GW. The squad is the official 15 (`FPL_MANAGER_ID` or the default entry). Settings → Import Picks reloads it.
 
 Production-style (API serves `web/dist`):
 
@@ -61,11 +61,7 @@ python -m fpl_analytics optimise --mode balanced
 python -m fpl_analytics optimise --mode differential
 ```
 
-`refresh` bypasses the 30-minute cache. After a transfer, update `{id, name}` in `config/squad.yaml`.
-
-## Squad File
-
-Each row is `{id, name}`. `id` is the FPL element id (canonical). `name` is FPL `web_name`, not the legal name. Name-only rows resolve if unique; ambiguous names (Fletcher, Neto) error.
+`refresh` bypasses the 30-minute cache. After a transfer on FPL, re-run with `--refresh` or Import Picks.
 
 ## Model Signals
 

@@ -8,7 +8,6 @@ from pathlib import Path
 from fpl_analytics.api import FPLClient
 from fpl_analytics.pipeline import run_pipeline
 from fpl_analytics.report import export_json, render_text
-from fpl_analytics.squad import DEFAULT_SQUAD_PATH
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -16,7 +15,6 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="fpl",
         description="FPL modelling, value analysis and squad optimisation.",
     )
-    p.add_argument("--squad", type=Path, default=DEFAULT_SQUAD_PATH, help="YAML squad file")
     p.add_argument("--horizon", type=int, default=6, help="Gameweeks ahead to score")
     p.add_argument("--refresh", action="store_true", help="Bypass the 30-minute API cache")
     sub = p.add_subparsers(dest="cmd")
@@ -68,7 +66,6 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     bundle = run_pipeline(
-        squad_path=args.squad,
         horizon=args.horizon,
         force_refresh=args.refresh,
         max_transfers=getattr(args, "max", 2),

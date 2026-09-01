@@ -42,6 +42,57 @@ def fetch_official_picks(client: Any, manager_id: int, gw: int, force: bool = Fa
         return None
 
 
+def pick_ids(official: dict[str, Any] | None) -> list[int]:
+    if not official:
+        return []
+    return [int(i) for i in (official.get("xi_ids") or []) + (official.get("bench_ids") or [])]
+
+
+def bank_from_entry(entry: dict[str, Any] | None) -> float:
+    if not entry:
+        return 0.0
+    raw = entry.get("last_deadline_bank")
+    if raw in (None, ""):
+        return 0.0
+    return float(raw) / 10.0
+
+
+def free_transfers_from_history(history: dict[str, Any] | None) -> int:
+    """FTs available for the next deadline after applying each recorded GW."""
+    rows = (history or {}).get("current") or []
+    fts = 1
+    for row in sorted(rows, key=lambda r: int(r.get("event") or 0)):
+        used = int(row.get("event_transfers") or 0)
+        fts = min(5, max(0, fts - used) + 1)
+    return fts
+
+
+def load_official_squad(
+    client: Any,
+    manager_id: int,
+    gameweek: int,
+    force: bool = False,
+) -> tuple[list[int], dict[str, Any] | None, float, int]:
+    """Official 15, bank, and free transfers from the public entry endpoints."""
+    official = fetch_official_picks(client, manager_id, gameweek, force=force)
+    if official is None and gameweek > 1:
+        official = fetch_official_picks(client, manager_id, gameweek - 1, force=force)
+    ids = pick_ids(official)
+    if not ids:
+        raise RuntimeError(
+            f"Could not load official picks for manager {manager_id} GW{gameweek}."
+        )
+    try:
+        entry = client.entry(manager_id, force=force)
+    except Exception:
+        entry = None
+    try:
+        history = client.entry_history(manager_id, force=force)
+    except Exception:
+        history = None
+    return ids, official, bank_from_entry(entry), free_transfers_from_history(history)
+
+
 def parse_entry_picks(payload: dict[str, Any]) -> dict[str, Any] | None:
     picks = payload.get("picks") or []
     if not picks:

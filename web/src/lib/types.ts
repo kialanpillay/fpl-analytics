@@ -224,7 +224,6 @@ export type Settings = {
   bank: number;
   free_transfers: number;
   budget: number;
-  squad_path: string;
 };
 
 export type RunBody = {

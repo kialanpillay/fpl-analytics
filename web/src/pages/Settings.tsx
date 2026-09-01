@@ -29,8 +29,9 @@ export function Settings() {
     <div className="card max-w-xl space-y-4 rounded-xl p-5">
       <h1 className="text-lg font-semibold">Settings</h1>
       <p className="text-sm text-mute">
-        Squad File: <span className="text-slate-200">{data.squad_path}</span>
-        . Import Picks Overwrites It From The Official 15.
+        Squad is the official 15 for manager{" "}
+        <span className="text-slate-200">{data.manager_id}</span>. Import
+        Picks reloads it from the FPL entry.
       </p>
       <label className="block text-sm text-mute">
         Default Horizon

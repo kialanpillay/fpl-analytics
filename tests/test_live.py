@@ -1,6 +1,13 @@
 import pandas as pd
 
-from fpl_analytics.live import parse_entry_picks, players_for_ids, resolve_manager_id
+from fpl_analytics.live import (
+    bank_from_entry,
+    free_transfers_from_history,
+    parse_entry_picks,
+    pick_ids,
+    players_for_ids,
+    resolve_manager_id,
+)
 
 
 def test_parse_entry_picks_uses_multiplier_and_official_points():
@@ -49,3 +56,21 @@ def test_resolve_manager_id_defaults(monkeypatch):
     assert resolve_manager_id() == 5558057
     monkeypatch.setenv("FPL_MANAGER_ID", "99")
     assert resolve_manager_id() == 99
+
+
+def test_bank_and_free_transfers_from_entry():
+    assert bank_from_entry({"last_deadline_bank": 12}) == 1.2
+    assert bank_from_entry({}) == 0.0
+    assert free_transfers_from_history({"current": []}) == 1
+    assert (
+        free_transfers_from_history(
+            {
+                "current": [
+                    {"event": 1, "event_transfers": 1},
+                    {"event": 2, "event_transfers": 0},
+                ]
+            }
+        )
+        == 2
+    )
+    assert pick_ids({"xi_ids": [1, 2], "bench_ids": [3]}) == [1, 2, 3]
