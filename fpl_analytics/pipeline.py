@@ -20,6 +20,7 @@ from fpl_analytics.catalog import (
 from fpl_analytics.features import enrich
 from fpl_analytics.models import score
 from fpl_analytics.optimiser import (
+    DEFAULT_OBJECTIVE,
     DEFAULT_OBJECTIVES,
     SquadPlan,
     one_for_one,
@@ -83,7 +84,7 @@ def run_pipeline(
     max_transfers: int = 2,
     bank: float | None = None,
     free_transfers: int | None = None,
-    transfer_objective: str = "balanced",
+    transfer_objective: str = DEFAULT_OBJECTIVE,
     squad_ids: list[int] | None = None,
     manager_id: int | None = None,
 ) -> AnalysisBundle:
@@ -134,7 +135,9 @@ def run_pipeline(
         except Exception as exc:  # keep the rest of the report usable
             plans[obj] = exc  # type: ignore[assignment]
 
-    transfers = one_for_one(squad, players, bank=spec.bank, team_limit=meta.team_limit)
+    transfers = one_for_one(
+        squad, players, bank=spec.bank, team_limit=meta.team_limit, objective=transfer_objective
+    )
     try:
         transfer_plan = suggest_transfers(
             squad,

@@ -35,6 +35,7 @@ def _player(**overrides):
         "ppp": 2.9,
         "consistency": 8.1,
         "balanced": 8.4,
+        "aggressive": 8.6,
         "residual": 12.0,
         "differential": 8.0,
         "minutes_prob": 0.94,

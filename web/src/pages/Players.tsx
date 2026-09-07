@@ -18,7 +18,7 @@ const col = createColumnHelper<Player>();
 
 export function Players() {
   const [position, setPosition] = useState("");
-  const [sort, setSort] = useState("balanced");
+  const [sort, setSort] = useState("aggressive");
   const [filter, setFilter] = useState("");
   const [onlyUno, setOnlyUno] = useState(false);
   const [onlyValue, setOnlyValue] = useState(false);
@@ -90,8 +90,8 @@ export function Players() {
         >
           {(
             [
-              ["balanced", "Balanced"],
               ["aggressive", "Aggressive"],
+              ["balanced", "Balanced"],
               ["template", "Template"],
               ["xp_horizon", "Horizon xPts"],
               ["xp_gw", "GW xPts"],

@@ -361,7 +361,7 @@ def analysis_payload(bundle: AnalysisBundle) -> AnalysisOut:
         underpriced=players_payload(bundle.underpriced(15)),
         unorthodox=players_payload(bundle.unorthodox(15)),
         leaders={
-            pos: players_payload(bundle.leaders("balanced", 10, pos))
+            pos: players_payload(bundle.leaders("aggressive", 10, pos))
             for pos in ("GKP", "DEF", "MID", "FWD")
         },
         strategies=[StrategyOut(**s) for s in strategies()],

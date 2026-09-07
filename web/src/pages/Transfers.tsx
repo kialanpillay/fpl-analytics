@@ -8,10 +8,10 @@ import { useState } from "react";
 
 export function Transfers() {
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<ObjectiveMode>("balanced");
+  const [mode, setMode] = useState<ObjectiveMode>("aggressive");
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["transfers", mode],
-    queryFn: () => (mode === "balanced" ? api.transfers() : api.solveTransfers({ objective: mode })),
+    queryFn: () => (mode === "aggressive" ? api.transfers() : api.solveTransfers({ objective: mode })),
   });
   const apply = useMutation({
     mutationFn: () =>

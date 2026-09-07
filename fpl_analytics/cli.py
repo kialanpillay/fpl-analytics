@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from fpl_analytics.api import FPLClient
+from fpl_analytics.optimiser import DEFAULT_OBJECTIVE
 from fpl_analytics.pipeline import run_pipeline
 from fpl_analytics.report import export_json, render_text
 
@@ -26,7 +27,7 @@ def _build_parser() -> argparse.ArgumentParser:
     rank.add_argument("--position", choices=["GKP", "DEF", "MID", "FWD"])
     rank.add_argument(
         "--sort",
-        default="balanced",
+        default=DEFAULT_OBJECTIVE,
         choices=["balanced", "aggressive", "template", "xp_horizon", "xp_gw", "ppp", "consistency", "residual", "differential"],
     )
     rank.add_argument("-n", type=int, default=15)
@@ -34,7 +35,7 @@ def _build_parser() -> argparse.ArgumentParser:
     opt = sub.add_parser("optimise", help="Build a fresh 15 under FPL constraints")
     opt.add_argument(
         "--mode",
-        default="balanced",
+        default=DEFAULT_OBJECTIVE,
         choices=["balanced", "aggressive", "template", "ppp", "consistency", "differential", "xp"],
     )
 
@@ -42,7 +43,7 @@ def _build_parser() -> argparse.ArgumentParser:
     tr.add_argument("--max", type=int, default=2)
     tr.add_argument(
         "--mode",
-        default="balanced",
+        default=DEFAULT_OBJECTIVE,
         choices=["balanced", "aggressive", "template", "ppp", "consistency", "differential", "xp"],
     )
 
@@ -69,7 +70,7 @@ def main(argv: list[str] | None = None) -> None:
         horizon=args.horizon,
         force_refresh=args.refresh,
         max_transfers=getattr(args, "max", 2),
-        transfer_objective=getattr(args, "mode", "balanced"),
+        transfer_objective=getattr(args, "mode", DEFAULT_OBJECTIVE),
     )
 
     if cmd == "analyse":
@@ -81,7 +82,7 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     if cmd == "optimise":
-        plan = bundle.plans.get(args.mode) or bundle.plans.get("balanced")
+        plan = bundle.plans.get(args.mode) or bundle.plans.get(DEFAULT_OBJECTIVE)
         if not plan:
             raise SystemExit("Optimiser produced no plan. Is pulp installed?")
         print(render_text(bundle))

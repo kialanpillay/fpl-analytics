@@ -192,7 +192,8 @@ def render_text(bundle: AnalysisBundle) -> str:
         current_ids = set(bundle.squad["id"])
         incoming = bundle.transfer_plan.players.loc[~bundle.transfer_plan.players["id"].isin(current_ids)]
         outgoing = bundle.squad.loc[~bundle.squad["id"].isin(set(bundle.transfer_plan.players["id"]))]
-        parts += ["", f"Optimised {len(incoming)}-Transfer Plan (Balanced)", "-" * 88]
+        plan_label = OBJECTIVE_LABELS.get(bundle.transfer_plan.objective, bundle.transfer_plan.objective)
+        parts += ["", f"Optimised {len(incoming)}-Transfer Plan ({plan_label})", "-" * 88]
         for out_row, in_row in pair_swaps(outgoing, incoming):
             if out_row is None or in_row is None:
                 name = (in_row or out_row)["web_name"]
@@ -220,9 +221,9 @@ def render_text(bundle: AnalysisBundle) -> str:
     parts.append(_fmt(bundle.underpriced(12)))
     parts += ["", "Unorthodox (<10% Owned)", "-" * 88]
     parts.append(_fmt(bundle.unorthodox(12)))
-    parts += ["", "Position Leaders — Balanced", "-" * 88]
+    parts += ["", "Position Leaders — Aggressive", "-" * 88]
     for pos in ("GKP", "DEF", "MID", "FWD"):
-        parts += [f"\n{pos}", _fmt(bundle.leaders("balanced", 8, pos))]
+        parts += [f"\n{pos}", _fmt(bundle.leaders("aggressive", 8, pos))]
 
     parts += ["", "Season Strategies", "-" * 88]
     for s in strategies():

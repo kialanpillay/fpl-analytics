@@ -1,6 +1,6 @@
 export const OBJECTIVE_MODES = [
-  ["balanced", "Balanced"],
   ["aggressive", "Aggressive"],
+  ["balanced", "Balanced"],
   ["template", "Template"],
   ["ppp", "PPP"],
   ["consistency", "Consistency"],

@@ -1,0 +1,31 @@
+---
+description: Formal, consistent prose for FPL research notes and strategies
+alwaysApply: false
+---
+# Research Style
+
+When editing `fpl_analytics/research.py`, keep the module docstring contract. Recalibrate after each GW. Facts first, implication second. No slogans, no second-person imperatives (`do not`, `keep`, `start`).
+
+## Role Vocabulary
+
+Use only: selected, omitted, retained, sold, ineligible, blocked by club cap, insufficient sample.
+
+## Templates
+
+**Strategy** — two to four declarative sentences.
+
+**Squad note** — `GW{n}: {min} min; {events}; {pts} pts. GW{n+1}: {venue} {opp}. {role}.`
+
+**Watch / sold** — `{club}, £{price}. {sample}. {constraint}.`
+
+```
+# BAD
+"Home to Coventry. Start. Retain."
+"Fade Hull after one result."
+"Do not spend the second free transfer on Hull."
+
+# GOOD
+"GW3: 90 min; CS, 2 BP; 8 pts. GW4: A MUN. Selected. Retained as the City defender."
+"Hull assets are away at Chelsea; one-week residuals are not treated as rates."
+"No free transfer remains after Semenyo → Ødegaard."
+```

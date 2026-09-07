@@ -10,7 +10,7 @@ import type { Plan } from "../lib/types";
 export function Wildcard() {
   const { data, isPending, isError, error } = useQuery({ queryKey: ["wildcard"], queryFn: api.wildcard });
   const analysis = useQuery({ queryKey: ["analysis"], queryFn: api.analysis });
-  const [mode, setMode] = useState<ObjectiveMode>("balanced");
+  const [mode, setMode] = useState<ObjectiveMode>("aggressive");
   const [locked, setLocked] = useState<number[]>([]);
   const [banned, setBanned] = useState<number[]>([]);
   const solve = useMutation({

@@ -40,6 +40,7 @@ DEFAULT_OBJECTIVES = (
     "consistency",
     "differential",
 )
+DEFAULT_OBJECTIVE = "aggressive"
 
 
 @dataclass
@@ -169,7 +170,7 @@ def _plan(chosen: pd.DataFrame, objective: str) -> SquadPlan:
 
 def optimise_squad(
     players: pd.DataFrame,
-    objective: str = "balanced",
+    objective: str = DEFAULT_OBJECTIVE,
     budget: float = 100.0,
     team_limit: int = 3,
     locked_ids: set[int] | None = None,
@@ -195,7 +196,7 @@ def suggest_transfers(
     squad: pd.DataFrame,
     players: pd.DataFrame,
     max_transfers: int = 2,
-    objective: str = "balanced",
+    objective: str = DEFAULT_OBJECTIVE,
     budget: float = 100.0,
     bank: float = 0.0,
     team_limit: int = 3,
@@ -227,8 +228,10 @@ def one_for_one(
     bank: float = 0.0,
     team_limit: int = 3,
     top_n: int = 12,
+    objective: str = DEFAULT_OBJECTIVE,
 ) -> pd.DataFrame:
-    """Rank legal single replacements by balanced-score lift."""
+    """Rank legal single replacements by the active objective lift."""
+    col, _ = OBJECTIVES.get(objective, OBJECTIVES[DEFAULT_OBJECTIVE])
     pool = _eligible(players)
     current_ids = set(squad["id"])
     rows = []
@@ -244,11 +247,12 @@ def one_for_one(
             after = club_counts.get(inn["team_id"], 0) + 1
             if after > team_limit:
                 continue
+            d_obj = inn[col] - out_p[col]
             d_bal = inn["balanced"] - out_p["balanced"]
             d_xp = inn["xp_horizon"] - out_p["xp_horizon"]
-            if not (np.isfinite(d_bal) and np.isfinite(d_xp)):
+            if not (np.isfinite(d_obj) and np.isfinite(d_xp)):
                 continue
-            if d_bal <= 0.05 and d_xp <= 0.4:
+            if d_obj <= 0.05 and d_xp <= 0.4:
                 continue
             rows.append(
                 {
@@ -263,6 +267,7 @@ def one_for_one(
                     "in_price": inn["price"],
                     "cost_delta": inn["price"] - out_p["price"],
                     "d_balanced": d_bal,
+                    "d_objective": d_obj,
                     "d_xp": d_xp,
                     "d_ppp": inn["ppp"] - out_p["ppp"],
                     "d_cons": inn["consistency"] - out_p["consistency"],
@@ -274,7 +279,7 @@ def one_for_one(
         return pd.DataFrame()
     return (
         pd.DataFrame(rows)
-        .sort_values(["d_balanced", "d_xp"], ascending=False)
+        .sort_values(["d_objective", "d_xp"], ascending=False)
         .head(top_n)
         .reset_index(drop=True)
     )

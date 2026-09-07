@@ -57,7 +57,7 @@ python -m fpl_analytics rank --position MID --sort ppp
 python -m fpl_analytics differentials
 python -m fpl_analytics value
 
-python -m fpl_analytics optimise --mode balanced
+python -m fpl_analytics optimise
 python -m fpl_analytics optimise --mode differential
 ```
 
@@ -73,6 +73,7 @@ python -m fpl_analytics optimise --mode differential
 | `consistency` | Starts, minutes, DEFCON floor, minus new-club / &lt;900-minute risk |
 | `residual` | Per-position OLS residual of last-season points on price |
 | `balanced` | `0.50 * xp_horizon + 0.28 * ppp + 0.22 * consistency` (minmax-scaled) |
+| `aggressive` | `0.45 * xp_gw + 0.35 * xp_horizon + 0.20 * xGI` — default ILP / transfer objective |
 
 Pre-season, `form` is 0; 2025/26 minutes, xG, and DEFCON remain on the element. Role risk discounts summer moves and &lt;900 minutes. In-season, `refresh` picks up live `ep_next`, `form`, and availability.
 

@@ -15,6 +15,7 @@ from fpl_analytics.api import DEFAULT_CACHE_DIR, FPLClient
 from fpl_analytics.captaincy import rank_captaincy
 from fpl_analytics.live import fetch_official_picks, players_for_ids
 from fpl_analytics.optimiser import (
+    DEFAULT_OBJECTIVE,
     DEFAULT_OBJECTIVES,
     OBJECTIVES,
     hit_scenarios,
@@ -77,7 +78,7 @@ class ImportEntryBody(BaseModel):
 
 
 class DraftSolveBody(BaseModel):
-    objective: str = "balanced"
+    objective: str = DEFAULT_OBJECTIVE
     locked_ids: list[int] = Field(default_factory=list)
     banned_ids: list[int] = Field(default_factory=list)
     budget: float | None = None
@@ -93,7 +94,7 @@ class ApplyTransfersBody(BaseModel):
 
 
 class TransferSolveBody(BaseModel):
-    objective: str = "balanced"
+    objective: str = DEFAULT_OBJECTIVE
     max_transfers: int | None = None
 
 
@@ -262,7 +263,7 @@ def _transfers_payload(bundle, plan, objective: str) -> dict:
 @app.get("/api/transfers")
 def get_transfers() -> dict:
     bundle = STATE.get_bundle()
-    return _transfers_payload(bundle, bundle.transfer_plan, "balanced")
+    return _transfers_payload(bundle, bundle.transfer_plan, DEFAULT_OBJECTIVE)
 
 
 @app.post("/api/transfers/solve")
@@ -334,7 +335,7 @@ def get_captaincy() -> dict:
 @app.get("/api/players")
 def list_players(
     position: str | None = None,
-    sort: str = "balanced",
+    sort: str = DEFAULT_OBJECTIVE,
     n: int = 400,
     available: bool = True,
 ) -> dict:
