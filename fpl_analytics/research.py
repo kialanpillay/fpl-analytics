@@ -25,9 +25,9 @@ STRATEGIES = [
         "title": "Underpriced DEFCON Assets",
         "detail": (
             "2025/26 value-above-replacement was DEFCON-weighted; those "
-            "leaders have been re-priced. Tarkowski recorded 14 points "
-            "(assist, CS, 12 DEFCON, 3 BP) at home to Ipswich. Mitchell "
-            "recorded 7 from the bench. Both remain the defensive floor."
+            "leaders have been re-priced. Tarkowski recorded 17 DEFCON "
+            "and 3 points at Hull. De Cuyper recorded 15 (goal, CS, 3 BP) "
+            "from 67 minutes. Gvardiol recorded 24 minutes."
         ),
     },
     {
@@ -35,39 +35,40 @@ STRATEGIES = [
         "title": "Premium Captain Plus Enablers",
         "detail": (
             "Haaland is the season captain under the aggressive objective. "
-            "GW6 is away at Liverpool. João Pedro recorded 0 minutes "
-            "(knee, 75%). Isak at £9.1 is funded from Pedro plus bank. "
-            "The sale is deferred until after the international break."
+            "GW7 is home to Ipswich. João Pedro recorded 71 minutes, two "
+            "goals and 12 points; a sale is not indicated. Isak is "
+            "ineligible (thigh, unknown return)."
         ),
     },
     {
         "id": "minutes-over-upside",
         "title": "Minutes Over Upside",
         "detail": (
-            "Gakpo recorded 90 minutes after a 30-minute GW4. Ndiaye "
-            "recorded 74 minutes and an assist. Ampadu recorded 90 and "
-            "14 DEFCON. Fábio Carvalho's 51-point horizon is 3 minutes "
-            "and 12.9 xG per 90; that residual is not treated as a rate."
+            "Gakpo recorded 0 minutes (ankle, unknown return). Cherki "
+            "recorded 90 minutes, a goal and a clean sheet. Fábio "
+            "Carvalho's horizon is still 3 minutes and 12.9 xG per 90; "
+            "that residual is not treated as a rate."
         ),
     },
     {
         "id": "fixture-swings",
         "title": "Fixture Swings, Not Season Averages",
         "detail": (
-            "GW6: Arsenal home to Leeds; Tarkowski away at Hull; "
-            "Manchester City away at Liverpool. Groß is away at "
-            "Sunderland after 14 points against Arsenal. Hull residuals "
-            "remain one-week samples. Re-solve when FDR turns."
+            "GW7: Manchester City home to Ipswich; Brighton home to "
+            "Crystal Palace; Leeds home to Manchester United. Groß and "
+            "Verbruggen share the Palace fixture. Hull residuals remain "
+            "one-week samples. Re-solve when FDR turns."
         ),
     },
     {
         "id": "three-club-cap",
         "title": "Club Cap",
         "detail": (
-            "Manchester City is at two (Haaland, Gvardiol) after Ndiaye "
-            "was sold for Groß. Arsenal is at three (Raya, Calafiori, "
-            "Ødegaard). Cherki is legal; Havertz is blocked by the "
-            "Arsenal cap."
+            "Manchester City is at two (Haaland, Gvardiol). Cherki is "
+            "legal and takes the club to three. Arsenal is at three "
+            "(Raya, Calafiori, Ødegaard); Saka and Havertz are blocked "
+            "by the club cap. A Gvardiol sale is required before a "
+            "second City midfielder."
         ),
     },
     {
@@ -75,10 +76,10 @@ STRATEGIES = [
         "title": "Chip Windows, 2026/27",
         "detail": (
             "Bench Boost and Triple Captain are available from GW1. "
-            "Wildcard and Free Hit windows are GW2–19 and GW20–38. Five "
-            "completed gameweeks plus an international break is still "
-            "an insufficient minutes sample for the first wildcard. One "
-            "free transfer remains after Ndiaye → Groß."
+            "Wildcard and Free Hit windows are GW2–19 and GW20–38. Six "
+            "completed gameweeks is still an insufficient minutes "
+            "sample for the first wildcard. Two free transfers are "
+            "available after one was used on Ndiaye → Groß."
         ),
     },
 ]
@@ -93,64 +94,64 @@ class PlayerNote:
 PLAYER_NOTES: dict[str, PlayerNote] = {
     # Current 15
     "Raya": PlayerNote(
-        "value",
-        "GW5: 90 min; 3 GC; 1 pt. GW6: H LEE. Selected in goal.",
+        "watch",
+        "GW6: 90 min; 1 GC, 4 saves; 3 pts. GW7: A NFO. Omitted; Verbruggen is selected versus Crystal Palace.",
     ),
     "Verbruggen": PlayerNote(
-        "watch",
-        "GW5: 90 min; CS; 6 pts (bench). GW6: A SUN. Omitted; Raya is selected versus Leeds.",
+        "value",
+        "GW6: 90 min; CS, 3 saves, 2 BP; 9 pts (bench). GW7: H CRY. Selected in goal.",
     ),
     "Mitchell": PlayerNote(
-        "value",
-        "GW5: 90 min; CS, 1 BP; 7 pts (bench). GW6: H NFO. Selected in a back three.",
+        "watch",
+        "GW6: 90 min; 1 GC, 13 DEFCON; 4 pts (bench). GW7: A BHA. Omitted.",
     ),
     "Calafiori": PlayerNote(
         "value",
-        "GW5: 90 min; 3 GC; 1 pt. GW6: H LEE. Selected.",
+        "GW6: 81 min; 1 goal, 1 GC, 1 BP; 9 pts. GW7: A NFO. Selected.",
     ),
     "Tarkowski": PlayerNote(
         "value",
-        "GW5: 90 min; 1 assist, CS, 12 DEFCON, 3 BP; 14 pts. GW6: A HUL. Selected. Retained.",
+        "GW6: 90 min; 2 GC, 17 DEFCON; 3 pts. GW7: H CHE. Omitted. Retained.",
     ),
     "Gvardiol": PlayerNote(
-        "value",
-        "GW5: 90 min; 1 assist, 3 GC; 4 pts. GW6: A LIV. Selected. Retained.",
+        "watch",
+        "GW6: 24 min; 1 assist; 4 pts. GW7: H IPS. Second sale (De Cuyper). Selected if retained.",
     ),
     "Van Hecke": PlayerNote(
-        "watch",
-        "GW5: 90 min; 1 goal, 3 GC; 6 pts (auto-sub for João Pedro). GW6: A MUN. First defensive substitute.",
+        "value",
+        "GW6: 90 min; 1 GC, YC, 11 DEFCON; 3 pts (auto-sub for Gakpo). GW7: H COV. Selected.",
     ),
     "Groß": PlayerNote(
         "value",
-        "GW5: 90 min; 14 pts. GW6: A SUN. Selected. Incoming for Ndiaye.",
+        "GW6: 90 min; 1 assist, CS, 10 DEFCON; 6 pts. GW7: H CRY. Selected. Retained.",
     ),
     "E.Le Fée": PlayerNote(
         "watch",
-        "GW5: 90 min; 1 assist, 5 GC; 5 pts (bench). GW6: H BHA. Cover if Ampadu is retained.",
+        "GW6: 80 min; 1 GC; 2 pts (bench). GW7: A BOU. Selected.",
     ),
     "Ampadu": PlayerNote(
         "watch",
-        "GW5: 90 min; CS, 14 DEFCON; 5 pts. GW6: A ARS. Retained.",
+        "GW6: 90 min; 2 GC, YC; 1 pt. GW7: H MUN. Selected in a 3-5-2.",
     ),
     "Gakpo": PlayerNote(
-        "value",
-        "GW5: 90 min; CS; 3 pts. GW6: H MCI. Selected. Retained.",
+        "avoid",
+        "GW6: 0 min; ankle, unknown return; 0 pts. GW7: A BRE. Sale indicated.",
     ),
     "Ødegaard": PlayerNote(
-        "value",
-        "GW5: 72 min; 3 GC; 2 pts. GW6: H LEE. Selected. Retained.",
+        "watch",
+        "GW6: 89 min; 1 GC, YC; 1 pt. GW7: A NFO. Selected. Retained.",
     ),
     "Haaland": PlayerNote(
         "value",
-        "GW5 (C): 90 min; 1 goal, 3 GC; 6 pts (12 with multiplier). GW6: A LIV. Selected; season captain.",
+        "GW6 (C): 79 min; 1 goal, CS; 6 pts (12 with multiplier). GW7: H IPS. Selected; season captain.",
     ),
     "Calvert-Lewin": PlayerNote(
         "watch",
-        "GW5: 90 min; CS; 2 pts. GW6: A ARS. Selected until a João Pedro replacement arrives.",
+        "GW6: 90 min; 2 GC; 2 pts. GW7: H MUN. Omitted.",
     ),
     "João Pedro": PlayerNote(
-        "avoid",
-        "GW5: 0 min; knee, 75%; 0 pts. GW6: H BOU. Sale indicated after the break if the flag holds; Isak is the replacement.",
+        "value",
+        "GW6: 71 min; 2 goals, 2 BP; 12 pts. GW7: A EVE. Selected. Retained.",
     ),
     # Recent sales
     "Ndiaye": PlayerNote(
@@ -248,7 +249,7 @@ PLAYER_NOTES: dict[str, PlayerNote] = {
     ),
     "Cherki": PlayerNote(
         "watch",
-        "Manchester City, £7.8, 28.1% owned. GW5: 8 pts. GW6: A LIV. Blocked by the club cap until Ndiaye is sold.",
+        "Manchester City, £7.9, 32.1% owned. GW6: 90 min; 1 goal, CS, 2 BP; 10 pts. 392 min, 5 starts. Replacement for Gakpo; City reaches three.",
     ),
     "Hall": PlayerNote(
         "value",
@@ -347,8 +348,8 @@ PLAYER_NOTES: dict[str, PlayerNote] = {
         "Manchester City defender. Legal after the Ndiaye sale; Gvardiol is the City defender.",
     ),
     "Isak": PlayerNote(
-        "value",
-        "Liverpool, £9.1, 22.1% owned. 413 min, 5 starts, 4 goals, 33 pts. Horizon 31.3 versus João Pedro 19.6 after the minutes discount. Funded from Pedro plus bank.",
+        "avoid",
+        "Liverpool, £9.0. Thigh injury, unknown return. GW6: 0 min. Ineligible as a João Pedro replacement.",
     ),
     "Carvalho": PlayerNote(
         "avoid",
@@ -356,7 +357,15 @@ PLAYER_NOTES: dict[str, PlayerNote] = {
     ),
     "Schade": PlayerNote(
         "watch",
-        "Brentford, £6.1, 10.0% owned. GW5: 9 pts. Not required after Groß.",
+        "Brentford, £6.2, 15.0% owned. Shoulder, 75%. Not required after Groß.",
+    ),
+    "De Cuyper": PlayerNote(
+        "value",
+        "Brighton, £5.1, 35.6% owned. 490 min, 6 starts, 53 pts. GW6: 67 min; 1 goal, CS, 3 BP; 15 pts. Replacement for Gvardiol; Brighton reaches three.",
+    ),
+    "Cunha": PlayerNote(
+        "watch",
+        "Manchester United, £7.9, 6.4% owned. 497 min, 6 starts. GW6: 90 min; 1 assist, 3 BP; 10 pts. Alternative to Cherki, away at Leeds.",
     ),
 }
 
